@@ -1758,8 +1758,8 @@ function renderPlanModal(dateKey, record = null) {
           </select>
         </label>
         <label class="field">
-          <span>연습 시간</span>
-          <input id="modalDurationMinutes" type="number" min="0" step="10" value="${Number(record?.durationMinutes ?? 60)}" />
+          <span>연습 시간(시간)</span>
+          <input id="modalDurationHours" type="number" min="0" step="0.5" value="${formatHoursInputValue(record?.durationMinutes ?? 60)}" />
         </label>
         <label class="field">
           <span>장소</span>
@@ -1808,7 +1808,7 @@ function validatePlanModal() {
   const errorNode = document.getElementById("modalFormError");
   const dateValue = document.getElementById("modalPracticeDate")?.value;
   const freeGoalText = document.getElementById("modalFreeGoalText")?.value.trim() || "";
-  const durationMinutes = Number(document.getElementById("modalDurationMinutes")?.value || 0);
+  const durationHours = Number(document.getElementById("modalDurationHours")?.value || 0);
 
   const renderError = (message) => {
     errorNode.textContent = message;
@@ -1822,7 +1822,7 @@ function validatePlanModal() {
   if (!state.modalDraftGoalBlocks.length && !freeGoalText) {
     return renderError("목표 동작을 추가하거나 자유 목표를 입력해주세요.");
   }
-  if (Number.isNaN(durationMinutes) || durationMinutes < 0) {
+  if (Number.isNaN(durationHours) || durationHours < 0) {
     return renderError("연습 시간은 0 이상이어야 합니다.");
   }
 
@@ -1847,7 +1847,7 @@ function submitPlanFromModal() {
     practiceDate: document.getElementById("modalPracticeDate").value,
     practiceType: document.getElementById("modalPracticeType").value,
     genre: state.profile?.mainGenre || existingRecord?.genre || "other",
-    durationMinutes: Number(document.getElementById("modalDurationMinutes").value) || 0,
+    durationMinutes: hoursToMinutes(document.getElementById("modalDurationHours").value),
     goal,
     goalBlocks,
     freeGoalText,
@@ -2563,6 +2563,15 @@ function formatMinutes(totalMinutes) {
     return `${hours}시간`;
   }
   return `${hours}시간 ${minutes}분`;
+}
+
+function formatHoursInputValue(totalMinutes) {
+  const hours = (Number(totalMinutes) || 0) / 60;
+  return Number.isInteger(hours) ? String(hours) : String(Number(hours.toFixed(2)));
+}
+
+function hoursToMinutes(value) {
+  return Math.round((Number(value) || 0) * 60);
 }
 
 function formatDateKey(date) {
