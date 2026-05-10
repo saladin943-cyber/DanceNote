@@ -962,6 +962,152 @@ button {
   gap: 0.75rem;
 }
 
+.avatar-builder {
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.035);
+}
+
+.avatar-builder-layout {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.avatar-preview-wrap {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.avatar-preview-stage,
+.room-image-stage {
+  position: relative;
+  overflow: hidden;
+  min-height: 21rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-lg);
+  background: #171414;
+}
+
+.avatar-preview-stage {
+  min-height: 24rem;
+}
+
+.room-image-stage {
+  min-height: 29rem;
+}
+
+.preview-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.room-stage-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(17, 17, 17, 0.08), rgba(17, 17, 17, 0.12) 55%, rgba(17, 17, 17, 0.35)),
+    radial-gradient(circle at 50% 70%, rgba(255, 255, 255, 0.18), transparent 34%);
+}
+
+.avatar-preview-stage > .preview-character {
+  position: absolute;
+  left: 50%;
+  bottom: 0.7rem;
+  z-index: 2;
+  width: min(58%, 15.5rem);
+  max-height: 88%;
+  object-fit: contain;
+  filter: drop-shadow(0 1.1rem 1.4rem rgba(0, 0, 0, 0.32));
+  transform: translateX(-50%);
+}
+
+.preview-caption {
+  display: inline-flex;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(242, 140, 140, 0.2);
+  border-radius: 999px;
+  background: rgba(242, 140, 140, 0.1);
+  color: #ffd7d7;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.selector-list {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+}
+
+.arrow-selector {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 0.75fr) 2.7rem minmax(0, 1.2fr) 2.7rem;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 3.2rem;
+  padding: 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.arrow-selector-label {
+  padding-left: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.arrow-selector-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.92rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow-selector-button {
+  width: 2.65rem;
+  height: 2.65rem;
+  border: 1px solid rgba(242, 140, 140, 0.28);
+  border-radius: 999px;
+  background: rgba(242, 140, 140, 0.12);
+  color: #ffd7d7;
+  font-size: 1.6rem;
+  line-height: 1;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.arrow-selector-button:hover {
+  border-color: rgba(242, 140, 140, 0.58);
+  background: rgba(242, 140, 140, 0.2);
+  transform: translateY(-1px);
+}
+
+.builder-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.9rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .team-create-fields,
 .inline-team-form {
   display: grid;
@@ -1009,6 +1155,68 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--radius-lg);
   background: #181514;
+}
+
+.avatar-room > .preview-background {
+  z-index: 0;
+}
+
+.room-image-stage > .dancer-avatar-image {
+  position: absolute;
+  left: 50%;
+  bottom: 1.15rem;
+  z-index: 2;
+  width: min(46%, 16rem);
+  transform: translateX(-50%);
+}
+
+.dancer-avatar-image {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  width: 8.8rem;
+  filter: drop-shadow(0 1rem 1.1rem rgba(0, 0, 0, 0.32));
+}
+
+.dancer-avatar-image .preview-character {
+  position: static;
+  width: 100%;
+  height: auto;
+  max-height: 15rem;
+  object-fit: contain;
+}
+
+.dancer-avatar-image.is-small {
+  width: 6.8rem;
+}
+
+.dancer-avatar-image.is-small .preview-character {
+  max-height: 10.5rem;
+}
+
+.dancer-avatar-image.is-mock {
+  opacity: 0.9;
+}
+
+.dancer-avatar-image .avatar-label {
+  bottom: -0.45rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-team-floor {
+  inset: auto 0 0;
+  z-index: 2;
+  height: 46%;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(0.35rem, 2vw, 1rem);
+  background: linear-gradient(180deg, transparent, rgba(17, 17, 17, 0.18));
+  border-top: 0;
 }
 
 .room-wall {
@@ -1349,6 +1557,11 @@ button {
     grid-template-columns: minmax(18rem, 0.7fr) minmax(0, 1fr);
     align-items: start;
   }
+
+  .avatar-builder-layout {
+    grid-template-columns: minmax(16rem, 0.95fr) minmax(17rem, 1fr);
+    align-items: start;
+  }
 }
 
 @media (min-width: 1080px) {
@@ -1398,6 +1611,19 @@ button {
     min-height: 23rem;
   }
 
+  .avatar-preview-stage,
+  .room-image-stage {
+    min-height: 20rem;
+  }
+
+  .arrow-selector {
+    grid-template-columns: 1fr 2.65rem 1.1fr 2.65rem;
+  }
+
+  .arrow-selector-label {
+    font-size: 0.76rem;
+  }
+
   .team-room {
     min-height: 18rem;
   }
@@ -1412,5 +1638,13 @@ button {
 
   .dancer-avatar.is-small {
     --avatar-scale: 0.72;
+  }
+
+  .room-image-stage > .dancer-avatar-image {
+    width: min(58%, 13rem);
+  }
+
+  .dancer-avatar-image.is-small {
+    width: 5.5rem;
   }
 }

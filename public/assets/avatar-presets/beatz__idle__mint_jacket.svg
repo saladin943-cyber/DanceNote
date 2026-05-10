@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 520">
+  <rect width="360" height="520" fill="none"/>
+  <circle cx="180" cy="108" r="54" fill="#edc2a4"/>
+  <path d="M126 98c8-47 102-58 112 0-40-8-75-8-112 0z" fill="#243448"/>
+  <path d="M104 194h152l22 152H82z" fill="#a7f0c1"/>
+  <path d="M140 194v150M220 194v150" stroke="#263348" stroke-width="9" opacity=".45"/>
+  <path d="M104 218l-54 74M256 218l54 74" stroke="#edc2a4" stroke-width="26" stroke-linecap="round"/>
+  <path d="M128 346h42v104h-50zM190 346h42l8 104h-50z" fill="#263348"/>
+  <path d="M108 456h70M184 456h76" stroke="#ff7373" stroke-width="22" stroke-linecap="round"/>
+  <text x="180" y="503" text-anchor="middle" font-family="Verdana" font-size="34" fill="#a7f0c1" font-weight="700">BEATZ</text>
+</svg>

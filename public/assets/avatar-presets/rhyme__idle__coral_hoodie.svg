@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 520">
+  <rect width="360" height="520" fill="none"/>
+  <circle cx="180" cy="108" r="54" fill="#f0c4aa"/>
+  <path d="M132 92c12-52 88-52 102-2-30-13-68-12-102 2z" fill="#2d2430"/>
+  <path d="M118 200c20-55 104-55 124 0l28 138H90z" fill="#f28c8c"/>
+  <path d="M116 220l-54 80M244 220l54 80" stroke="#f0c4aa" stroke-width="26" stroke-linecap="round"/>
+  <path d="M134 338h38v108h-48zM188 338h38l10 108h-48z" fill="#313131"/>
+  <path d="M112 452h70M184 452h76" stroke="#f5f1ec" stroke-width="22" stroke-linecap="round"/>
+  <text x="180" y="503" text-anchor="middle" font-family="Verdana" font-size="34" fill="#f28c8c" font-weight="700">RHYME</text>
+</svg>

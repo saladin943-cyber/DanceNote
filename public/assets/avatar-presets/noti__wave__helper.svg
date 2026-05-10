@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 520">
+  <rect width="360" height="520" fill="none"/>
+  <circle cx="180" cy="150" r="82" fill="#ffd7a8"/>
+  <circle cx="154" cy="140" r="9" fill="#2d2430"/>
+  <circle cx="206" cy="140" r="9" fill="#2d2430"/>
+  <path d="M150 172q30 26 62 0" stroke="#2d2430" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M112 252h136l22 118H90z" fill="#b9d7ff"/>
+  <path d="M112 276l-72 48M248 274l52-92" stroke="#ffd7a8" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="309" cy="172" r="18" fill="#ffd7a8"/>
+  <path d="M128 370h44v76h-52zM188 370h44l8 76h-52z" fill="#57515e"/>
+  <path d="M108 456h74M184 456h78" stroke="#ff7373" stroke-width="22" stroke-linecap="round"/>
+  <text x="180" y="503" text-anchor="middle" font-family="Verdana" font-size="34" fill="#b9d7ff" font-weight="700">NOTI</text>
+</svg>

@@ -18,44 +18,124 @@ const PRACTICE_TYPE_LABELS = {
   solo: "개인",
   team: "팀",
 };
-const AVATAR_OPTIONS = {
-  hat: {
-    none: "없음",
-    cap: "볼캡",
-    beanie: "비니",
-    bucket: "버킷햇",
+const CHARACTER_CATALOG = {
+  rhyme: {
+    label: "RHYME",
+    looks: {
+      coral_hoodie: {
+        label: "코랄 후디",
+        poses: {
+          idle: "public/assets/avatar-presets/rhyme__idle__coral_hoodie.svg",
+          groove: "public/assets/avatar-presets/rhyme__groove__dance_pose.svg",
+          point: "public/assets/avatar-presets/rhyme__point__note_pose.svg",
+        },
+      },
+      dance_pose: {
+        label: "댄스 포즈",
+        poses: {
+          idle: "public/assets/avatar-presets/rhyme__idle__coral_hoodie.svg",
+          groove: "public/assets/avatar-presets/rhyme__groove__dance_pose.svg",
+          wave: "public/assets/avatar-presets/rhyme__point__note_pose.svg",
+        },
+      },
+      note_pose: {
+        label: "노트 포즈",
+        poses: {
+          idle: "public/assets/avatar-presets/rhyme__idle__coral_hoodie.svg",
+          point: "public/assets/avatar-presets/rhyme__point__note_pose.svg",
+          wave: "public/assets/avatar-presets/rhyme__point__note_pose.svg",
+        },
+      },
+    },
   },
-  top: {
-    tshirt: "기본 티셔츠",
-    hoodie: "후디",
-    overshirt: "오버핏 셔츠",
-    jacket: "트레이닝 자켓",
+  beatz: {
+    label: "BEATZ",
+    looks: {
+      mint_jacket: {
+        label: "민트 자켓",
+        poses: {
+          idle: "public/assets/avatar-presets/beatz__idle__mint_jacket.svg",
+          groove: "public/assets/avatar-presets/beatz__idle__mint_jacket.svg",
+          point: "public/assets/avatar-presets/beatz__point__clipboard.svg",
+        },
+      },
+      clipboard: {
+        label: "클립보드",
+        poses: {
+          idle: "public/assets/avatar-presets/beatz__idle__mint_jacket.svg",
+          point: "public/assets/avatar-presets/beatz__point__clipboard.svg",
+          wave: "public/assets/avatar-presets/beatz__point__clipboard.svg",
+        },
+      },
+      stretch: {
+        label: "스트레칭",
+        poses: {
+          idle: "public/assets/avatar-presets/beatz__idle__mint_jacket.svg",
+          sit: "public/assets/avatar-presets/beatz__sit__stretch.svg",
+          groove: "public/assets/avatar-presets/beatz__sit__stretch.svg",
+        },
+      },
+    },
   },
-  bottom: {
-    jogger: "조거팬츠",
-    wide: "와이드팬츠",
-    shorts: "쇼츠",
-    track: "트레이닝팬츠",
-  },
-  shoes: {
-    sneaker: "스니커즈",
-    hightop: "하이탑",
-    dance: "댄스화",
-  },
-  pose: {
-    idle: "기본 서기",
-    groove: "그루브",
-    freeze: "프리즈",
-    wave: "손 인사",
-    team: "팀 포즈",
+  noti: {
+    label: "NOTI",
+    looks: {
+      cheerful: {
+        label: "치어풀",
+        poses: {
+          idle: "public/assets/avatar-presets/noti__idle__cheerful.svg",
+          wave: "public/assets/avatar-presets/noti__wave__helper.svg",
+        },
+      },
+      bounce: {
+        label: "바운스",
+        poses: {
+          idle: "public/assets/avatar-presets/noti__idle__cheerful.svg",
+          groove: "public/assets/avatar-presets/noti__groove__bounce.svg",
+        },
+      },
+      helper: {
+        label: "헬퍼",
+        poses: {
+          idle: "public/assets/avatar-presets/noti__idle__cheerful.svg",
+          wave: "public/assets/avatar-presets/noti__wave__helper.svg",
+          point: "public/assets/avatar-presets/noti__wave__helper.svg",
+        },
+      },
+    },
   },
 };
-const DEFAULT_AVATAR = {
-  hat: "none",
-  top: "tshirt",
-  bottom: "jogger",
-  shoes: "sneaker",
-  pose: "idle",
+const BACKGROUND_CATALOG = {
+  cozy_night_room: {
+    label: "Cozy Studio Night",
+    image: "public/assets/backgrounds/cozy-night-room.svg",
+  },
+  dance_studio_pink: {
+    label: "DanceNote Studio",
+    image: "public/assets/backgrounds/dance-studio-pink.svg",
+  },
+  character_concept_wall: {
+    label: "Character Concept Wall",
+    image: "public/assets/backgrounds/concept-wall.svg",
+  },
+  bright_practice_room: {
+    label: "Bright Practice Room",
+    image: "public/assets/backgrounds/bright-practice-room.svg",
+  },
+};
+const POSE_LABELS = {
+  idle: "기본",
+  groove: "그루브",
+  point: "포인트",
+  sit: "앉기",
+  wave: "손 인사",
+};
+const ACCESSORY_LABELS = {
+  none: "없음",
+};
+const avatarBuilderState = {
+  setup: null,
+  update: null,
 };
 
 const mockRecords = [
@@ -407,9 +487,11 @@ function renderHome() {
     return;
   }
 
+  state.profile = normalizeProfileAvatar(state.profile);
   const team = getProfileTeam();
   const monthRecords = getMonthRecords(state.records, state.currentMonth);
   const topMove = getTopMove(monthRecords);
+  const avatar = state.profile.avatar;
   elements.homeContent.innerHTML = `
     <div class="home-grid">
       <section class="panel room-card">
@@ -436,8 +518,12 @@ function renderHome() {
             <strong>${GENRE_LABELS[state.profile.mainGenre] || state.profile.mainGenre}</strong>
             <span>팀</span>
             <strong>${team ? escapeHtml(team.teamName) : "없음"}</strong>
+            <span>캐릭터</span>
+            <strong>${getCharacterLabel(avatar.baseCharacterId)}</strong>
             <span>현재 포즈</span>
-            <strong>${AVATAR_OPTIONS.pose[state.profile.avatar.pose]}</strong>
+            <strong>${POSE_LABELS[avatar.poseId] || avatar.poseId}</strong>
+            <span>배경</span>
+            <strong>${BACKGROUND_CATALOG[avatar.backgroundId]?.label || avatar.backgroundId}</strong>
             <span>최근 업데이트</span>
             <strong>${formatRelativeDateTime(state.profile.updatedAt)}</strong>
           </div>
@@ -479,6 +565,7 @@ function renderHome() {
 }
 
 function renderProfileSetup() {
+  avatarBuilderState.setup = getDefaultAvatarPreset();
   elements.homeContent.innerHTML = `
     <section class="panel profile-setup">
       <div class="setup-copy">
@@ -532,45 +619,54 @@ function renderProfileSetup() {
           </label>
         </div>
 
-        <div class="customizer-grid">
-          ${renderAvatarFields("setup", DEFAULT_AVATAR)}
-        </div>
+        ${renderAvatarBuilder("setup", avatarBuilderState.setup)}
 
         <button class="accent-button" type="submit">캐릭터 생성하기</button>
       </form>
     </section>
   `;
+  renderCharacterBuilderPreview("setup");
+  syncAvatarBuilderLabels("setup");
   bindHomeEvents();
 }
 
 function renderPersonalRoom() {
+  const profile = normalizeProfileAvatar(state.profile);
   return `
-    <div class="avatar-room personal-room">
-      <div class="room-wall">
-        <div class="room-light"></div>
-        <div class="room-mirror"></div>
-        <div class="room-speaker"></div>
-      </div>
-      <div class="room-floor">
-        ${renderAvatar(state.profile, { label: state.profile.dancerName })}
-      </div>
+    <div class="room-image-stage personal-room">
+      <img class="preview-background" src="${profile.avatarPreview.backgroundImage}" alt="" />
+      <div class="room-stage-shade"></div>
+      ${renderAvatar(profile, { label: profile.dancerName })}
     </div>
   `;
 }
 
 function renderTeamRoom(team) {
+  const backgroundImage = getBackgroundImagePath(state.profile.avatar.backgroundId);
   const mockMembers = [
     {
       id: "mock-1",
       dancerName: "Beat",
       mainGenre: team.genre,
-      avatar: { hat: "cap", top: "jacket", bottom: "track", shoes: "hightop", pose: "groove" },
+      avatar: {
+        baseCharacterId: "beatz",
+        poseId: "point",
+        lookId: "clipboard",
+        backgroundId: state.profile.avatar.backgroundId,
+        accessoryId: null,
+      },
     },
     {
       id: "mock-2",
       dancerName: "Line",
       mainGenre: team.genre,
-      avatar: { hat: "beanie", top: "overshirt", bottom: "wide", shoes: "dance", pose: "wave" },
+      avatar: {
+        baseCharacterId: "noti",
+        poseId: "wave",
+        lookId: "helper",
+        backgroundId: state.profile.avatar.backgroundId,
+        accessoryId: null,
+      },
     },
   ];
 
@@ -591,12 +687,9 @@ function renderTeamRoom(team) {
       <strong>${escapeHtml(team.leaderName)}</strong>
     </div>
     <div class="avatar-room team-room">
-      <div class="room-wall">
-        <div class="room-light"></div>
-        <div class="room-mirror"></div>
-        <div class="room-speaker"></div>
-      </div>
-      <div class="room-floor team-floor">
+      <img class="preview-background" src="${backgroundImage}" alt="" />
+      <div class="room-stage-shade"></div>
+      <div class="room-floor team-floor image-team-floor">
         ${renderAvatar(state.profile, { label: state.profile.dancerName, size: "small" })}
         ${mockMembers.map((member) => renderAvatar(member, { label: member.dancerName, size: "small", isMock: true })).join("")}
       </div>
@@ -609,25 +702,21 @@ function renderTeamRoom(team) {
 }
 
 function renderAvatar(profile, options = {}) {
-  const avatar = { ...DEFAULT_AVATAR, ...(profile.avatar || {}) };
+  const normalizedProfile = normalizeProfileAvatar(profile);
   const sizeClass = options.size === "small" ? "is-small" : "";
   const mockClass = options.isMock ? "is-mock" : "";
-  const label = options.label || profile.dancerName;
+  const label = options.label || normalizedProfile.dancerName;
 
   return `
-    <div class="dancer-avatar ${sizeClass} ${mockClass} avatar-pose-${avatar.pose} avatar-top-${avatar.top} avatar-bottom-${avatar.bottom} avatar-shoes-${avatar.shoes}">
-      <div class="avatar-hat avatar-hat-${avatar.hat}">${avatar.hat === "none" ? "" : AVATAR_OPTIONS.hat[avatar.hat]}</div>
-      <div class="avatar-head"></div>
-      <div class="avatar-arms"></div>
-      <div class="avatar-body">${AVATAR_OPTIONS.top[avatar.top]}</div>
-      <div class="avatar-legs">${AVATAR_OPTIONS.bottom[avatar.bottom]}</div>
-      <div class="avatar-shoes">${AVATAR_OPTIONS.shoes[avatar.shoes]}</div>
+    <div class="dancer-avatar-image ${sizeClass} ${mockClass}">
+      <img class="preview-character" src="${normalizedProfile.avatarPreview.characterImage}" alt="${escapeHtml(label)} 캐릭터" />
       <div class="avatar-label">${escapeHtml(label)}</div>
     </div>
   `;
 }
 
 function renderAvatarUpdateForm() {
+  avatarBuilderState.update = normalizeProfileAvatar(state.profile).avatar;
   return `
     <form class="setup-form" id="avatarUpdateForm">
       <div class="field-row">
@@ -642,9 +731,7 @@ function renderAvatarUpdateForm() {
           </select>
         </label>
       </div>
-      <div class="customizer-grid">
-        ${renderAvatarFields("update", { ...DEFAULT_AVATAR, ...state.profile.avatar })}
-      </div>
+      ${renderAvatarBuilder("update", avatarBuilderState.update)}
       <button class="accent-button" type="submit">아바타 저장</button>
     </form>
   `;
@@ -690,25 +777,48 @@ function renderTeamCreateForm() {
   `;
 }
 
-function renderAvatarFields(prefix, avatar) {
-  return Object.entries(AVATAR_OPTIONS)
-    .map(([key, options]) => {
-      const fieldId = `${prefix}${capitalize(key)}`;
-      return `
-        <label class="field">
-          <span>${getAvatarFieldLabel(key)}</span>
-          <select id="${fieldId}" name="${key}">
-            ${Object.entries(options)
-              .map(
-                ([value, label]) =>
-                  `<option value="${value}" ${avatar[key] === value ? "selected" : ""}>${label}</option>`,
-              )
-              .join("")}
-          </select>
-        </label>
-      `;
-    })
-    .join("");
+function renderAvatarBuilder(scope, avatar) {
+  const normalizedAvatar = normalizeAvatarState(avatar);
+  return `
+    <section class="avatar-builder" data-builder-scope="${scope}">
+      <div class="avatar-builder-layout">
+        ${renderAvatarPreviewStage(scope, normalizedAvatar)}
+        <div class="selector-list">
+          ${renderArrowSelector({ scope, key: "baseCharacterId", label: "캐릭터 타입", valueLabel: getCharacterLabel(normalizedAvatar.baseCharacterId) })}
+          ${renderArrowSelector({ scope, key: "poseId", label: "포즈", valueLabel: POSE_LABELS[normalizedAvatar.poseId] || normalizedAvatar.poseId })}
+          ${renderArrowSelector({ scope, key: "lookId", label: "스타일/룩", valueLabel: getLookLabel(normalizedAvatar) })}
+          ${renderArrowSelector({ scope, key: "accessoryId", label: "액세서리", valueLabel: ACCESSORY_LABELS[normalizedAvatar.accessoryId || "none"] })}
+          ${renderArrowSelector({ scope, key: "backgroundId", label: "배경", valueLabel: BACKGROUND_CATALOG[normalizedAvatar.backgroundId]?.label || normalizedAvatar.backgroundId })}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderAvatarPreviewStage(scope, avatar) {
+  const characterImage = getCharacterImagePath(avatar);
+  const backgroundImage = getBackgroundImagePath(avatar.backgroundId);
+  return `
+    <div class="avatar-preview-wrap">
+      <div class="avatar-preview-stage" id="${scope}AvatarPreviewStage">
+        <img class="preview-background" data-preview-background="${scope}" src="${backgroundImage}" alt="" />
+        <div class="room-stage-shade"></div>
+        <img class="preview-character" data-preview-character="${scope}" src="${characterImage}" alt="캐릭터 미리보기" />
+      </div>
+      <div class="preview-caption" id="${scope}PreviewCaption">${getPreviewCaption(avatar)}</div>
+    </div>
+  `;
+}
+
+function renderArrowSelector({ scope, key, label, valueLabel }) {
+  return `
+    <div class="arrow-selector" data-selector-scope="${scope}" data-key="${key}">
+      <span class="arrow-selector-label">${label}</span>
+      <button class="arrow-selector-button" type="button" data-selector-prev data-scope="${scope}" data-key="${key}" aria-label="${label} 이전">‹</button>
+      <strong class="arrow-selector-value" data-selector-value="${scope}-${key}">${valueLabel}</strong>
+      <button class="arrow-selector-button" type="button" data-selector-next data-scope="${scope}" data-key="${key}" aria-label="${label} 다음">›</button>
+    </div>
+  `;
 }
 
 function bindHomeEvents() {
@@ -763,21 +873,29 @@ function bindHomeEvents() {
   });
 
   resetProfileButton?.addEventListener("click", resetProfile);
+
+  document.querySelectorAll("[data-selector-prev], [data-selector-next]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const direction = button.hasAttribute("data-selector-prev") ? -1 : 1;
+      cycleAvatarOption(button.dataset.key, direction, button.dataset.scope);
+    });
+  });
 }
 
 function createProfileFromForm() {
   const now = new Date().toISOString();
   const teamMode = document.getElementById("setupTeamMode").value;
   const dancerName = document.getElementById("setupDancerName").value.trim();
-  const profile = {
+  const avatar = normalizeAvatarState(getCurrentAvatarBuilderState("setup"));
+  const profile = normalizeProfileAvatar({
     id: createScopedId("profile"),
     dancerName,
     mainGenre: document.getElementById("setupMainGenre").value,
     teamId: null,
-    avatar: readAvatarFromForm("setup"),
+    avatar,
     createdAt: now,
     updatedAt: now,
-  };
+  });
 
   if (teamMode === "create") {
     const team = {
@@ -808,9 +926,10 @@ function updateAvatarFromForm() {
     ...state.profile,
     dancerName: document.getElementById("updateDancerName").value.trim(),
     mainGenre: document.getElementById("updateMainGenre").value,
-    avatar: readAvatarFromForm("update"),
+    avatar: normalizeAvatarState(getCurrentAvatarBuilderState("update")),
     updatedAt: new Date().toISOString(),
   };
+  state.profile = normalizeProfileAvatar(state.profile);
   persistProfile();
   renderHome();
 }
@@ -868,31 +987,184 @@ function resetProfile() {
   renderHome();
 }
 
-function readAvatarFromForm(prefix) {
-  return {
-    hat: document.getElementById(`${prefix}Hat`).value,
-    top: document.getElementById(`${prefix}Top`).value,
-    bottom: document.getElementById(`${prefix}Bottom`).value,
-    shoes: document.getElementById(`${prefix}Shoes`).value,
-    pose: document.getElementById(`${prefix}Pose`).value,
-  };
-}
-
 function renderGenreOptions(selectedValue = "breaking") {
   return Object.entries(GENRE_LABELS)
     .map(([value, label]) => `<option value="${value}" ${value === selectedValue ? "selected" : ""}>${label}</option>`)
     .join("");
 }
 
-function getAvatarFieldLabel(key) {
-  const labels = {
-    hat: "모자",
-    top: "상의",
-    bottom: "하의",
-    shoes: "신발",
-    pose: "포즈",
+function getDefaultAvatarPreset() {
+  return normalizeAvatarState({
+    baseCharacterId: "rhyme",
+    poseId: "idle",
+    lookId: "coral_hoodie",
+    backgroundId: "cozy_night_room",
+    accessoryId: null,
+  });
+}
+
+function migrateProfileToImageAvatar(profile) {
+  if (!profile) {
+    return profile;
+  }
+  return normalizeProfileAvatar(profile);
+}
+
+function normalizeProfileAvatar(profile) {
+  const avatar = normalizeAvatarState(profile.avatar || getDefaultAvatarPreset());
+  return {
+    ...profile,
+    avatar,
+    avatarPreview: {
+      characterImage: getCharacterImagePath(avatar),
+      backgroundImage: getBackgroundImagePath(avatar.backgroundId),
+    },
   };
-  return labels[key];
+}
+
+function normalizeAvatarState(avatar = {}) {
+  const baseCharacterId = CHARACTER_CATALOG[avatar.baseCharacterId] ? avatar.baseCharacterId : "rhyme";
+  const character = CHARACTER_CATALOG[baseCharacterId];
+  const lookIds = Object.keys(character.looks);
+  const lookId = character.looks[avatar.lookId] ? avatar.lookId : lookIds[0];
+  const poseIds = Object.keys(character.looks[lookId].poses);
+  const legacyPoseMap = {
+    idle: "idle",
+    groove: "groove",
+    freeze: "point",
+    wave: "wave",
+    team: "groove",
+  };
+  const requestedPose = avatar.poseId || legacyPoseMap[avatar.pose] || avatar.pose;
+  const poseId = character.looks[lookId].poses[requestedPose] ? requestedPose : poseIds[0];
+  const backgroundId = BACKGROUND_CATALOG[avatar.backgroundId] ? avatar.backgroundId : "cozy_night_room";
+
+  return {
+    baseCharacterId,
+    poseId,
+    lookId,
+    backgroundId,
+    accessoryId: avatar.accessoryId || null,
+  };
+}
+
+function getCurrentAvatarBuilderState(scope) {
+  avatarBuilderState[scope] = normalizeAvatarState(avatarBuilderState[scope] || getDefaultAvatarPreset());
+  return avatarBuilderState[scope];
+}
+
+function cycleAvatarOption(key, direction, scope) {
+  const current = getCurrentAvatarBuilderState(scope);
+  let nextAvatar = { ...current };
+  const options = getAvatarOptionValues(key, current);
+  const currentValue = key === "accessoryId" ? current.accessoryId || "none" : current[key];
+  const currentIndex = Math.max(options.indexOf(currentValue), 0);
+  const nextIndex = (currentIndex + direction + options.length) % options.length;
+  const nextValue = options[nextIndex];
+
+  if (key === "baseCharacterId") {
+    const character = CHARACTER_CATALOG[nextValue];
+    const lookId = Object.keys(character.looks)[0];
+    nextAvatar = {
+      ...nextAvatar,
+      baseCharacterId: nextValue,
+      lookId,
+      poseId: Object.keys(character.looks[lookId].poses)[0],
+    };
+  } else if (key === "lookId") {
+    const poses = CHARACTER_CATALOG[current.baseCharacterId].looks[nextValue].poses;
+    nextAvatar = {
+      ...nextAvatar,
+      lookId: nextValue,
+      poseId: poses[current.poseId] ? current.poseId : Object.keys(poses)[0],
+    };
+  } else if (key === "accessoryId") {
+    nextAvatar.accessoryId = nextValue === "none" ? null : nextValue;
+  } else {
+    nextAvatar[key] = nextValue;
+  }
+
+  avatarBuilderState[scope] = normalizeAvatarState(nextAvatar);
+  renderCharacterBuilderPreview(scope);
+  syncAvatarBuilderLabels(scope);
+}
+
+function getAvatarOptionValues(key, avatar) {
+  if (key === "baseCharacterId") {
+    return Object.keys(CHARACTER_CATALOG);
+  }
+  if (key === "lookId") {
+    return Object.keys(CHARACTER_CATALOG[avatar.baseCharacterId].looks);
+  }
+  if (key === "poseId") {
+    return Object.keys(CHARACTER_CATALOG[avatar.baseCharacterId].looks[avatar.lookId].poses);
+  }
+  if (key === "backgroundId") {
+    return Object.keys(BACKGROUND_CATALOG);
+  }
+  if (key === "accessoryId") {
+    return ["none"];
+  }
+  return [];
+}
+
+function renderCharacterBuilderPreview(scope) {
+  const avatar = getCurrentAvatarBuilderState(scope);
+  const characterImage = document.querySelector(`[data-preview-character="${scope}"]`);
+  const backgroundImage = document.querySelector(`[data-preview-background="${scope}"]`);
+  const caption = document.getElementById(`${scope}PreviewCaption`);
+
+  if (characterImage) {
+    characterImage.src = getCharacterImagePath(avatar);
+  }
+  if (backgroundImage) {
+    backgroundImage.src = getBackgroundImagePath(avatar.backgroundId);
+  }
+  if (caption) {
+    caption.textContent = getPreviewCaption(avatar);
+  }
+}
+
+function syncAvatarBuilderLabels(scope) {
+  const avatar = getCurrentAvatarBuilderState(scope);
+  const labels = {
+    baseCharacterId: getCharacterLabel(avatar.baseCharacterId),
+    poseId: POSE_LABELS[avatar.poseId] || avatar.poseId,
+    lookId: getLookLabel(avatar),
+    accessoryId: ACCESSORY_LABELS[avatar.accessoryId || "none"],
+    backgroundId: BACKGROUND_CATALOG[avatar.backgroundId]?.label || avatar.backgroundId,
+  };
+
+  Object.entries(labels).forEach(([key, value]) => {
+    const node = document.querySelector(`[data-selector-value="${scope}-${key}"]`);
+    if (node) {
+      node.textContent = value;
+    }
+  });
+}
+
+function getCharacterImagePath(avatar) {
+  const normalizedAvatar = normalizeAvatarState(avatar);
+  const look = CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].looks[normalizedAvatar.lookId];
+  return look.poses[normalizedAvatar.poseId] || Object.values(look.poses)[0];
+}
+
+function getBackgroundImagePath(backgroundId) {
+  return BACKGROUND_CATALOG[backgroundId]?.image || BACKGROUND_CATALOG.cozy_night_room.image;
+}
+
+function getCharacterLabel(baseCharacterId) {
+  return CHARACTER_CATALOG[baseCharacterId]?.label || baseCharacterId;
+}
+
+function getLookLabel(avatar) {
+  const normalizedAvatar = normalizeAvatarState(avatar);
+  return CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].looks[normalizedAvatar.lookId]?.label || normalizedAvatar.lookId;
+}
+
+function getPreviewCaption(avatar) {
+  const normalizedAvatar = normalizeAvatarState(avatar);
+  return `${getCharacterLabel(normalizedAvatar.baseCharacterId)} · ${getLookLabel(normalizedAvatar)} · ${POSE_LABELS[normalizedAvatar.poseId] || normalizedAvatar.poseId}`;
 }
 
 function renderHero(monthRecords) {
@@ -1677,7 +1949,12 @@ function loadProfile() {
 
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    const migratedProfile = migrateProfileToImageAvatar(parsed);
+    window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(migratedProfile));
+    return migratedProfile;
   } catch (error) {
     console.error("Failed to parse profile from storage.", error);
     return null;
@@ -1689,6 +1966,7 @@ function persistProfile() {
     window.localStorage.removeItem(PROFILE_STORAGE_KEY);
     return;
   }
+  state.profile = normalizeProfileAvatar(state.profile);
   window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(state.profile));
 }
 
@@ -2112,8 +2390,4 @@ function createId() {
 
 function createScopedId(scope) {
   return `${scope}-${crypto.randomUUID()}`;
-}
-
-function capitalize(value) {
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
