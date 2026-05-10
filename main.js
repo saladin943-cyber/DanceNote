@@ -1502,9 +1502,13 @@ function renderMiniBars(items) {
   `;
 }
 
-function getSavedMoves(limit = 12) {
+function getSavedMoves(limit = 5) {
   const moves = new Map();
+  const mockRecordIds = new Set(mockRecords.map((record) => record.id));
   state.records.forEach((record) => {
+    if (mockRecordIds.has(record.id)) {
+      return;
+    }
     getGoalBlocksFromRecord(record).forEach((block) => {
       const current = moves.get(block.moveName) || { moveName: block.moveName, count: 0 };
       current.count += 1;
