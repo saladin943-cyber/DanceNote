@@ -229,6 +229,7 @@ const state = {
   editingRecordId: null,
   activeTab: "home",
   draftGoalBlocks: [],
+  showAllMoveStats: false,
 };
 
 const elements = {
@@ -257,6 +258,8 @@ const elements = {
   addGoalBlockButton: document.getElementById("addGoalBlockButton"),
   goalBlockList: document.getElementById("goalBlockList"),
   recentMoveChips: document.getElementById("recentMoveChips"),
+  quickTemplateChips: document.getElementById("quickTemplateChips"),
+  formErrorMessage: document.getElementById("formErrorMessage"),
   practiceNotes: document.getElementById("practiceNotes"),
   reflection: document.getElementById("reflection"),
   nextTask: document.getElementById("nextTask"),
@@ -340,6 +343,12 @@ function bindEvents() {
       addGoalBlock();
     }
   });
+
+  elements.statsGrid.addEventListener("click", (event) => {
+    if (event.target.matches("[data-action='toggle-move-stats']")) {
+      toggleMoveStatsView();
+    }
+  });
 }
 
 function render() {
@@ -358,6 +367,7 @@ function render() {
   renderStats(monthRecords);
   renderGoalBlockEditor();
   renderRecentMoveChips();
+  renderQuickTemplates();
   renderFormState();
 }
 
@@ -387,6 +397,8 @@ function renderHome() {
   }
 
   const team = getProfileTeam();
+  const monthRecords = getMonthRecords(state.records, state.currentMonth);
+  const topMove = getTopMove(monthRecords);
   elements.homeContent.innerHTML = `
     <div class="home-grid">
       <section class="panel room-card">
@@ -417,6 +429,11 @@ function renderHome() {
             <strong>${AVATAR_OPTIONS.pose[state.profile.avatar.pose]}</strong>
             <span>최근 업데이트</span>
             <strong>${formatRelativeDateTime(state.profile.updatedAt)}</strong>
+          </div>
+          <div class="profile-month-insight">
+            <strong>이번 달 집중 동작: ${topMove ? escapeHtml(topMove.moveName) : "아직 없음"}</strong>
+            <span>이번 달 수행 횟수: ${topMove ? topMove.completedCount : 0}회</span>
+            <span>이번 달 연습 기록: ${monthRecords.length}개</span>
           </div>
         </section>
 
@@ -921,6 +938,8 @@ function renderCalendarDay(day) {
   const records = getRecordsByDate(state.records, dateKey);
   const totalMinutes = records.reduce((sum, record) => sum + record.durationMinutes, 0);
   const completedMoves = getTotalCompletedCount(records);
+  const moveVolumeLevel = getMoveVolumeLevel(completedMoves);
+  const dayGoalsCompleted = isDayGoalsCompleted(records);
   const intensityLevel = getIntensityLevel(totalMinutes);
   const isSelected = dateKey === state.selectedDate;
   const isToday = dateKey === formatDateKey(new Date());
@@ -929,13 +948,15 @@ function renderCalendarDay(day) {
     day.isCurrentMonth ? "" : "is-outside",
     isSelected ? "is-selected" : "",
     isToday ? "is-today" : "",
+    moveVolumeLevel ? `move-level-${moveVolumeLevel}` : "",
+    dayGoalsCompleted ? "is-goals-complete" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
   return `
     <button class="${dayClasses}" type="button" data-date="${dateKey}">
-      ${records.some((record) => record.goalCompleted) ? '<span class="complete-badge"></span>' : ""}
+      ${dayGoalsCompleted ? '<span class="complete-badge"></span>' : ""}
       <span class="calendar-day-number">${day.date.getDate()}</span>
       ${completedMoves ? `<span class="calendar-move-badge">${completedMoves}회</span>` : ""}
       <div class="calendar-day-meta">
@@ -1021,11 +1042,12 @@ function renderRecordList(records) {
 
 function renderRecordCard(record) {
   const goalBlocks = getGoalBlocksFromRecord(record);
+  const completedMoves = getTotalCompletedCount([record]);
   return `
     <article class="record-card">
       <div class="record-topline">
         <strong>${PRACTICE_TYPE_LABELS[record.practiceType]} 연습</strong>
-        <span class="record-meta">${formatMinutes(record.durationMinutes)} · ${record.goalCompleted ? "목표 달성" : "진행 중"}</span>
+        <span class="record-meta">${formatMinutes(record.durationMinutes)} · 동작 수행 ${completedMoves}회 · ${record.goalCompleted ? "목표 달성" : "진행 중"}</span>
       </div>
 
       <div class="tag-row">
@@ -1076,6 +1098,8 @@ function renderStats(monthRecords) {
   const totalMoveCompleted = moveStats.reduce((sum, move) => sum + move.completedCount, 0);
 
   elements.statsGrid.innerHTML = `
+    ${renderDashboardInsights(monthRecords)}
+
     <article class="stat-card">
       <h3>이번 달 총 연습 횟수</h3>
       <div class="stat-value">${monthRecords.length}회</div>
@@ -1128,8 +1152,16 @@ function renderStats(monthRecords) {
     </article>
 
     <article class="stat-card">
-      <h3>동작별 TOP 5</h3>
-      ${renderMoveStats(monthRecords)}
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Move Stats</p>
+          <h3>동작별 통계</h3>
+        </div>
+        <button class="move-stat-toggle" type="button" data-action="toggle-move-stats">
+          ${state.showAllMoveStats ? "TOP 5 보기" : "전체 동작 보기"}
+        </button>
+      </div>
+      ${renderMoveStats(monthRecords, { limit: state.showAllMoveStats ? null : 5 })}
     </article>
 
     <article class="stat-card">
@@ -1224,6 +1256,7 @@ function addGoalBlock() {
     }),
   );
 
+  clearFormError();
   elements.goalMoveName.value = "";
   elements.goalTargetCount.value = "10";
   elements.goalCompletedCount.value = "0";
@@ -1242,6 +1275,7 @@ function addGoalBlockFromRecent(moveName) {
       completedCount: 0,
     }),
   );
+  clearFormError();
   renderGoalBlockEditor();
 }
 
@@ -1289,6 +1323,98 @@ function renderRecentMoveChips() {
   });
 }
 
+function getQuickTemplates() {
+  return [
+    {
+      id: "solo-basic",
+      label: "개인 기본기",
+      practiceType: "solo",
+      durationMinutes: 60,
+      goalBlocks: [
+        { moveName: "탑락", targetCount: 20, completedCount: 0 },
+        { moveName: "풋워크", targetCount: 20, completedCount: 0 },
+        { moveName: "프리즈", targetCount: 10, completedCount: 0 },
+      ],
+    },
+    {
+      id: "routine-run",
+      label: "루틴 런스루",
+      durationMinutes: 90,
+      goalBlocks: [
+        { moveName: "루틴 런스루", targetCount: 5, completedCount: 0 },
+        { moveName: "문제 구간 반복", targetCount: 10, completedCount: 0 },
+      ],
+    },
+    {
+      id: "team-sync",
+      label: "팀 합 맞추기",
+      practiceType: "team",
+      durationMinutes: 120,
+      goalBlocks: [
+        { moveName: "전체 런스루", targetCount: 3, completedCount: 0 },
+        { moveName: "동선 정리", targetCount: 10, completedCount: 0 },
+        { moveName: "카운트 맞추기", targetCount: 10, completedCount: 0 },
+      ],
+    },
+    {
+      id: "freestyle",
+      label: "프리스타일",
+      durationMinutes: 60,
+      goalBlocks: [
+        { moveName: "프리스타일 라운드", targetCount: 5, completedCount: 0 },
+        { moveName: "음악 해석", targetCount: 5, completedCount: 0 },
+      ],
+    },
+  ];
+}
+
+function renderQuickTemplates() {
+  elements.quickTemplateChips.innerHTML = getQuickTemplates()
+    .map((template) => `<button class="quick-template-chip" type="button" data-template-id="${template.id}">${template.label}</button>`)
+    .join("");
+
+  elements.quickTemplateChips.querySelectorAll("[data-template-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      applyQuickTemplate(button.dataset.templateId);
+    });
+  });
+}
+
+function applyQuickTemplate(templateId) {
+  const template = getQuickTemplates().find((item) => item.id === templateId);
+  if (!template) {
+    return;
+  }
+
+  state.draftGoalBlocks = mergeGoalBlocks(state.draftGoalBlocks, template.goalBlocks);
+  if (template.practiceType) {
+    elements.practiceType.value = template.practiceType;
+  }
+  if (template.durationMinutes) {
+    elements.durationMinutes.value = String(template.durationMinutes);
+  }
+  if (state.profile?.mainGenre) {
+    elements.genre.value = state.profile.mainGenre;
+  }
+  clearFormError();
+  renderGoalBlockEditor();
+}
+
+function mergeGoalBlocks(existingBlocks, incomingBlocks) {
+  const blockMap = new Map();
+  [...existingBlocks, ...incomingBlocks].forEach((block) => {
+    const normalized = normalizeGoalBlock({ id: createScopedId("goal"), ...block });
+    const current = blockMap.get(normalized.moveName);
+    if (!current) {
+      blockMap.set(normalized.moveName, normalized);
+      return;
+    }
+    current.targetCount += normalized.targetCount;
+    current.completedCount += normalized.completedCount;
+  });
+  return [...blockMap.values()];
+}
+
 function renderRecordGoalBlocks(goalBlocks, fallbackGoal) {
   if (!goalBlocks.length) {
     return `<p>${escapeHtml(fallbackGoal || "기록 없음")}</p>`;
@@ -1299,13 +1425,18 @@ function renderRecordGoalBlocks(goalBlocks, fallbackGoal) {
       ${goalBlocks
         .map((block) => {
           const completion = calculateGoalBlockCompletion(block);
+          const statusClass = completion >= 100 ? "is-complete" : completion < 50 ? "needs-work" : "";
+          const statusLabel = completion >= 100 ? "완료" : completion < 50 ? "보완" : "진행";
           return `
-            <div class="goal-block-card">
+            <div class="goal-block-card ${statusClass}">
               <div class="goal-block-main">
                 <strong>${escapeHtml(block.moveName)}</strong>
                 <span>${block.completedCount} / ${block.targetCount}회</span>
               </div>
-              <div class="goal-block-meta">${completion}%</div>
+              <div class="goal-block-meta">
+                <span>${completion}%</span>
+                <span class="goal-status-badge ${statusClass}">${statusLabel}</span>
+              </div>
               <div class="goal-progress">
                 <div class="goal-progress-fill" style="width: ${Math.min(completion, 100)}%"></div>
               </div>
@@ -1317,10 +1448,9 @@ function renderRecordGoalBlocks(goalBlocks, fallbackGoal) {
   `;
 }
 
-function renderMoveStats(records) {
-  const moveStats = aggregateMoveStats(records)
-    .sort((a, b) => b.completedCount - a.completedCount)
-    .slice(0, 5);
+function renderMoveStats(records, options = {}) {
+  const sortedMoveStats = aggregateMoveStats(records).sort((a, b) => b.completedCount - a.completedCount);
+  const moveStats = options.limit ? sortedMoveStats.slice(0, options.limit) : sortedMoveStats;
 
   if (!moveStats.length) {
     return `<div class="empty-state">아직 집계할 목표 동작이 없습니다.</div>`;
@@ -1347,11 +1477,94 @@ function renderMoveStats(records) {
   `;
 }
 
+function renderDashboardInsights(monthRecords) {
+  const topMove = getTopMove(monthRecords);
+  const goalSummary = getMonthlyGoalSummary(monthRecords);
+  const conditionInsight = getConditionSatisfactionInsight(monthRecords);
+  const balanceInsight = getPracticeBalanceInsight(monthRecords);
+
+  return `
+    <section class="dashboard-insight-grid">
+      <article class="insight-card">
+        <p class="section-kicker">Focus Move</p>
+        <h3>이번 달 핵심 동작</h3>
+        <div class="insight-value">${topMove ? escapeHtml(topMove.moveName) : "아직 없음"}</div>
+        <p class="insight-comment">
+          ${topMove ? `이번 달은 ${escapeHtml(topMove.moveName)} 중심으로 연습했어요. 총 ${topMove.completedCount}회 수행 / 목표 ${topMove.targetCount}회 / 달성률 ${topMove.completionRate}%` : "이번 달 기록을 추가하면 집중 동작이 표시됩니다."}
+        </p>
+      </article>
+
+      <article class="insight-card">
+        <p class="section-kicker">Goal Rate</p>
+        <h3>목표 달성률</h3>
+        <div class="insight-value">${goalSummary.completionRate}%</div>
+        <p class="insight-comment">${goalSummary.completedCount} / ${goalSummary.targetCount}회 수행</p>
+        <div class="goal-progress">
+          <div class="goal-progress-fill" style="width: ${Math.min(goalSummary.completionRate, 100)}%"></div>
+        </div>
+      </article>
+
+      <article class="insight-card">
+        <p class="section-kicker">Body Check</p>
+        <h3>컨디션-만족도</h3>
+        <div class="insight-value">${conditionInsight.avgCondition.toFixed(1)} / ${conditionInsight.avgSatisfaction.toFixed(1)}</div>
+        <p class="insight-comment">${conditionInsight.comment}</p>
+      </article>
+
+      <article class="insight-card">
+        <p class="section-kicker">Balance</p>
+        <h3>연습 균형</h3>
+        <div class="insight-value">${balanceInsight.primaryLabel}</div>
+        <p class="insight-comment">${balanceInsight.comment}</p>
+      </article>
+    </section>
+  `;
+}
+
+function validateRecordForm() {
+  if (!elements.practiceDate.value) {
+    renderFormError("연습 날짜를 선택해주세요.");
+    return false;
+  }
+  if (!state.draftGoalBlocks.length) {
+    renderFormError("오늘의 목표를 최소 1개 이상 추가해주세요.");
+    return false;
+  }
+
+  const durationMinutes = Number(elements.durationMinutes.value);
+  const conditionScore = Number(elements.conditionScore.value);
+  const satisfactionScore = Number(elements.satisfactionScore.value);
+
+  if (Number.isNaN(durationMinutes) || durationMinutes < 0) {
+    renderFormError("연습 시간은 0 이상이어야 합니다.");
+    return false;
+  }
+  if (conditionScore < 1 || conditionScore > 5 || satisfactionScore < 1 || satisfactionScore > 5) {
+    renderFormError("컨디션과 만족도 점수는 1~5 범위여야 합니다.");
+    return false;
+  }
+  return true;
+}
+
+function renderFormError(message) {
+  elements.formErrorMessage.textContent = message;
+  elements.formErrorMessage.hidden = false;
+}
+
+function clearFormError() {
+  elements.formErrorMessage.textContent = "";
+  elements.formErrorMessage.hidden = true;
+}
+
 function renderFormState() {
   elements.formTitle.textContent = state.editingRecordId ? "기록 수정" : "새 연습 기록";
 }
 
 function upsertRecord() {
+  if (!validateRecordForm()) {
+    return;
+  }
+  clearFormError();
   const goalBlocks = state.draftGoalBlocks.map(normalizeGoalBlock);
   const existingRecord = elements.recordId.value ? getRecordById(elements.recordId.value) : null;
   const record = {
@@ -1419,6 +1632,7 @@ function populateForm(record) {
   elements.goalCompleted.checked = record.goalCompleted;
   elements.conditionValue.textContent = String(record.conditionScore);
   elements.satisfactionValue.textContent = String(record.satisfactionScore);
+  clearFormError();
   renderGoalBlockEditor();
   renderRecentMoveChips();
 }
@@ -1439,8 +1653,10 @@ function resetForm(options = {}) {
   elements.conditionValue.textContent = "3";
   elements.satisfactionValue.textContent = "3";
   elements.goalCompleted.checked = false;
+  clearFormError();
   renderGoalBlockEditor();
   renderRecentMoveChips();
+  renderQuickTemplates();
   renderFormState();
 }
 
@@ -1619,6 +1835,85 @@ function aggregateMoveStats(records) {
     ...move,
     completionRate: move.targetCount ? Math.round((move.completedCount / move.targetCount) * 100) : 0,
   }));
+}
+
+function getMonthlyGoalSummary(monthRecords) {
+  const moveStats = aggregateMoveStats(monthRecords);
+  const targetCount = moveStats.reduce((sum, move) => sum + move.targetCount, 0);
+  const completedCount = moveStats.reduce((sum, move) => sum + move.completedCount, 0);
+  return {
+    targetCount,
+    completedCount,
+    completionRate: targetCount ? Math.round((completedCount / targetCount) * 100) : 0,
+  };
+}
+
+function getTopMove(monthRecords) {
+  return aggregateMoveStats(monthRecords).sort((a, b) => b.completedCount - a.completedCount)[0] || null;
+}
+
+function getConditionSatisfactionInsight(monthRecords) {
+  const avgCondition = average(monthRecords.map((record) => record.conditionScore));
+  const avgSatisfaction = average(monthRecords.map((record) => record.satisfactionScore));
+  let comment = "기록을 추가하면 컨디션과 만족도 흐름이 보입니다.";
+
+  if (monthRecords.length) {
+    if (avgCondition >= 3.5 && avgSatisfaction >= 3.5) {
+      comment = "몸 상태와 성취감이 모두 좋은 달이에요.";
+    } else if (avgCondition < 3.5 && avgSatisfaction >= 3.5) {
+      comment = "몸은 무거웠지만 연습 성취감은 있었어요.";
+    } else if (avgCondition >= 3.5 && avgSatisfaction < 3.5) {
+      comment = "몸 상태는 괜찮지만 목표 설정이나 난이도 조정이 필요해 보여요.";
+    } else {
+      comment = "회복과 연습 강도 조절이 필요한 달이에요.";
+    }
+  }
+
+  return { avgCondition, avgSatisfaction, comment };
+}
+
+function getPracticeBalanceInsight(monthRecords) {
+  if (!monthRecords.length) {
+    return {
+      primaryLabel: "기록 없음",
+      comment: "이번 달 기록을 추가하면 연습 균형이 표시됩니다.",
+    };
+  }
+
+  const soloCount = monthRecords.filter((record) => record.practiceType === "solo").length;
+  const teamCount = monthRecords.filter((record) => record.practiceType === "team").length;
+  const genreTotals = aggregateBy(monthRecords, "genre", "durationMinutes");
+  const topGenre = Object.entries(genreTotals).sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    primaryLabel: teamCount > soloCount ? "팀 중심" : "개인 중심",
+    comment:
+      teamCount > soloCount
+        ? `팀 연습 기록이 많아 합 맞추기 중심의 달이에요. 주 장르는 ${GENRE_LABELS[topGenre?.[0]] || "기록 없음"}입니다.`
+        : `이번 달은 개인 연습 비중이 높아요. 주 장르는 ${GENRE_LABELS[topGenre?.[0]] || "기록 없음"}입니다.`,
+  };
+}
+
+function toggleMoveStatsView() {
+  state.showAllMoveStats = !state.showAllMoveStats;
+  render();
+}
+
+function getMoveVolumeLevel(completedMoves) {
+  if (completedMoves >= 51) {
+    return 3;
+  }
+  if (completedMoves >= 21) {
+    return 2;
+  }
+  if (completedMoves >= 1) {
+    return 1;
+  }
+  return 0;
+}
+
+function isDayGoalsCompleted(records) {
+  return Boolean(records.length) && records.every((record) => isGoalBlocksCompleted(getGoalBlocksFromRecord(record)));
 }
 
 function loadRecords() {

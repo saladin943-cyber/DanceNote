@@ -76,112 +76,142 @@
 
               <form id="recordForm" class="record-form">
                 <input id="recordId" name="recordId" type="hidden" />
-
-                <label class="field">
-                  <span>연습 날짜</span>
-                  <input id="practiceDate" name="practiceDate" type="date" required />
-                </label>
-
-                <div class="field-row">
-                  <label class="field">
-                    <span>연습 유형</span>
-                    <select id="practiceType" name="practiceType">
-                      <option value="solo">개인</option>
-                      <option value="team">팀</option>
-                    </select>
-                  </label>
-
-                  <label class="field">
-                    <span>장르</span>
-                    <select id="genre" name="genre">
-                      <option value="breaking">브레이킹</option>
-                      <option value="hiphop">힙합</option>
-                      <option value="choreo">코레오</option>
-                      <option value="locking">락킹</option>
-                      <option value="popping">팝핀</option>
-                      <option value="waacking">왁킹</option>
-                      <option value="house">하우스</option>
-                      <option value="krump">크럼프</option>
-                      <option value="other">기타</option>
-                    </select>
-                  </label>
-                </div>
-
-                <label class="field">
-                  <span>연습 시간</span>
-                  <input id="durationMinutes" name="durationMinutes" type="number" min="10" step="10" required />
-                </label>
+                <div class="form-error-message" id="formErrorMessage" hidden></div>
 
                 <!-- Compatibility fields kept for the legacy record shape. The visible goal UI now uses goalBlocks. -->
                 <input id="goal" name="goal" type="hidden" />
                 <input id="goalCompleted" name="goalCompleted" type="checkbox" hidden />
 
-                <section class="goal-builder">
+                <section class="form-section">
                   <div>
-                    <h3>오늘의 목표</h3>
-                    <p>동작과 횟수를 블록으로 남기면 다음 연습에서 빠르게 다시 불러올 수 있어요.</p>
+                    <h3 class="form-section-title">기본 정보</h3>
+                    <p class="form-section-description">기록의 기준이 되는 날짜, 유형, 장소를 정합니다.</p>
                   </div>
 
-                  <div class="goal-builder-grid">
+                  <div class="compact-form-grid">
                     <label class="field">
-                      <span>동작명</span>
-                      <input id="goalMoveName" name="goalMoveName" type="text" placeholder="예: 윈드밀, 프리즈, 탑락, 루틴 런스루" />
+                      <span>연습 날짜</span>
+                      <input id="practiceDate" name="practiceDate" type="date" required />
                     </label>
 
                     <label class="field">
-                      <span>목표 횟수</span>
-                      <input id="goalTargetCount" name="goalTargetCount" type="number" min="1" value="10" />
+                      <span>연습 유형</span>
+                      <select id="practiceType" name="practiceType">
+                        <option value="solo">개인</option>
+                        <option value="team">팀</option>
+                      </select>
                     </label>
 
                     <label class="field">
-                      <span>실제 수행 횟수</span>
-                      <input id="goalCompletedCount" name="goalCompletedCount" type="number" min="0" value="0" />
+                      <span>장르</span>
+                      <select id="genre" name="genre">
+                        <option value="breaking">브레이킹</option>
+                        <option value="hiphop">힙합</option>
+                        <option value="choreo">코레오</option>
+                        <option value="locking">락킹</option>
+                        <option value="popping">팝핀</option>
+                        <option value="waacking">왁킹</option>
+                        <option value="house">하우스</option>
+                        <option value="krump">크럼프</option>
+                        <option value="other">기타</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>연습 시간</span>
+                      <input id="durationMinutes" name="durationMinutes" type="number" min="0" step="10" required />
+                    </label>
+
+                    <label class="field">
+                      <span>장소</span>
+                      <input id="location" name="location" type="text" placeholder="예: 연습실, 집, 팀 스튜디오" />
                     </label>
                   </div>
-
-                  <button class="ghost-button" id="addGoalBlockButton" type="button">목표 블록 추가</button>
-
-                  <div>
-                    <p class="section-kicker">Recent Moves</p>
-                    <div class="recent-move-chips" id="recentMoveChips"></div>
-                  </div>
-
-                  <div class="goal-block-list" id="goalBlockList"></div>
                 </section>
 
-                <label class="field">
-                  <span>장소</span>
-                  <input id="location" name="location" type="text" placeholder="예: 연습실, 집, 팀 스튜디오" />
-                </label>
+                <section class="form-section">
+                  <div>
+                    <h3 class="form-section-title">빠른 템플릿</h3>
+                    <p class="form-section-description">자주 쓰는 연습 구성을 한 번에 추가합니다.</p>
+                  </div>
+                  <div class="quick-template-chips" id="quickTemplateChips"></div>
 
-                <label class="field">
-                  <span>실제 연습 내용</span>
-                  <textarea id="practiceNotes" name="practiceNotes" rows="3" placeholder="어떤 흐름으로 연습했는지 짧게 적어보세요"></textarea>
-                </label>
+                  <div class="goal-builder">
+                    <div>
+                      <h3>오늘의 목표</h3>
+                      <p>동작과 횟수를 블록으로 남기면 다음 연습에서 빠르게 다시 불러올 수 있어요.</p>
+                    </div>
 
-                <label class="field">
-                  <span>느낀 점</span>
-                  <textarea id="reflection" name="reflection" rows="2" placeholder="몸 상태, 집중도, 감각을 기록하세요"></textarea>
-                </label>
+                    <div class="goal-builder-grid">
+                      <label class="field">
+                        <span>동작명</span>
+                        <input id="goalMoveName" name="goalMoveName" type="text" placeholder="예: 윈드밀, 프리즈, 탑락, 루틴 런스루" />
+                      </label>
 
-                <label class="field">
-                  <span>다음 연습 과제</span>
-                  <textarea id="nextTask" name="nextTask" rows="2" placeholder="다음 세션에서 이어갈 포인트"></textarea>
-                </label>
+                      <label class="field">
+                        <span>목표 횟수</span>
+                        <input id="goalTargetCount" name="goalTargetCount" type="number" min="1" value="10" />
+                      </label>
 
-                <div class="field-row">
+                      <label class="field">
+                        <span>실제 수행 횟수</span>
+                        <input id="goalCompletedCount" name="goalCompletedCount" type="number" min="0" value="0" />
+                      </label>
+                    </div>
+
+                    <button class="ghost-button" id="addGoalBlockButton" type="button">목표 블록 추가</button>
+
+                    <div>
+                      <p class="section-kicker">Recent Moves</p>
+                      <div class="recent-move-chips" id="recentMoveChips"></div>
+                    </div>
+
+                    <div class="goal-block-list" id="goalBlockList"></div>
+                  </div>
+                </section>
+
+                <section class="form-section">
+                  <div>
+                    <h3 class="form-section-title">연습 회고</h3>
+                    <p class="form-section-description">오늘 실제로 해낸 흐름과 다음 과제를 남깁니다.</p>
+                  </div>
+
                   <label class="field">
-                    <span>컨디션 점수</span>
-                    <input id="conditionScore" name="conditionScore" type="range" min="1" max="5" value="3" />
-                    <strong class="range-value" id="conditionValue">3</strong>
+                    <span>실제 연습 내용</span>
+                    <textarea id="practiceNotes" name="practiceNotes" rows="3" placeholder="어떤 흐름으로 연습했는지 짧게 적어보세요"></textarea>
                   </label>
 
                   <label class="field">
-                    <span>만족도 점수</span>
-                    <input id="satisfactionScore" name="satisfactionScore" type="range" min="1" max="5" value="3" />
-                    <strong class="range-value" id="satisfactionValue">3</strong>
+                    <span>느낀 점</span>
+                    <textarea id="reflection" name="reflection" rows="2" placeholder="몸 상태, 집중도, 감각을 기록하세요"></textarea>
                   </label>
-                </div>
+
+                  <label class="field">
+                    <span>다음 연습 과제</span>
+                    <textarea id="nextTask" name="nextTask" rows="2" placeholder="다음 세션에서 이어갈 포인트"></textarea>
+                  </label>
+                </section>
+
+                <section class="form-section">
+                  <div>
+                    <h3 class="form-section-title">상태 점수</h3>
+                    <p class="form-section-description">몸 상태와 성취감을 1~5점으로 기록합니다.</p>
+                  </div>
+
+                  <div class="field-row">
+                    <label class="field">
+                      <span>컨디션 점수</span>
+                      <input id="conditionScore" name="conditionScore" type="range" min="1" max="5" value="3" />
+                      <strong class="range-value" id="conditionValue">3</strong>
+                    </label>
+
+                    <label class="field">
+                      <span>만족도 점수</span>
+                      <input id="satisfactionScore" name="satisfactionScore" type="range" min="1" max="5" value="3" />
+                      <strong class="range-value" id="satisfactionValue">3</strong>
+                    </label>
+                  </div>
+                </section>
 
                 <div class="form-actions">
                   <button class="ghost-button" id="resetFormButton" type="button">초기화</button>

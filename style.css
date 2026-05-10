@@ -524,6 +524,33 @@ button {
   gap: 0.9rem;
 }
 
+.form-section {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.form-section-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.form-section-description {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.88rem;
+}
+
+.compact-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
 .field-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -584,6 +611,35 @@ button {
   line-height: 1.5;
 }
 
+.quick-template-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.quick-template-chip {
+  min-height: 2.45rem;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(185, 215, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(185, 215, 255, 0.1);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.form-error-message {
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 115, 115, 0.44);
+  border-radius: var(--radius-md);
+  background: rgba(255, 115, 115, 0.12);
+  color: #ffd7d7;
+  font-weight: 800;
+}
+
+.form-error-message[hidden] {
+  display: none;
+}
+
 .goal-builder {
   display: grid;
   gap: 0.85rem;
@@ -627,6 +683,14 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.045);
+}
+
+.goal-block-card.is-complete {
+  border-color: rgba(167, 240, 193, 0.36);
+}
+
+.goal-block-card.needs-work {
+  border-color: rgba(255, 215, 168, 0.34);
 }
 
 .goal-block-main,
@@ -673,6 +737,28 @@ button {
   font-weight: 800;
 }
 
+.goal-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.goal-status-badge.is-complete {
+  background: rgba(167, 240, 193, 0.16);
+  color: #c9ffd8;
+}
+
+.goal-status-badge.needs-work {
+  background: rgba(255, 215, 168, 0.16);
+  color: #ffe1b5;
+}
+
 .recent-move-chips {
   display: flex;
   flex-wrap: wrap;
@@ -704,6 +790,47 @@ button {
   background: rgba(255, 255, 255, 0.035);
 }
 
+.dashboard-insight-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.insight-card {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.insight-card h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.insight-value {
+  margin-top: 0.65rem;
+  font-size: 1.55rem;
+  font-weight: 900;
+}
+
+.insight-comment {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.move-stat-toggle {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: #ffd7d7;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .move-stat-title {
   font-weight: 800;
 }
@@ -718,6 +845,27 @@ button {
   color: #ffd7d7;
   font-size: 0.68rem;
   font-weight: 800;
+}
+
+.calendar-day.move-level-1 {
+  background: rgba(242, 140, 140, 0.055);
+}
+
+.calendar-day.move-level-2 {
+  background: rgba(242, 140, 140, 0.095);
+  border-color: rgba(242, 140, 140, 0.24);
+}
+
+.calendar-day.move-level-3 {
+  background: rgba(255, 115, 115, 0.15);
+  border-color: rgba(255, 115, 115, 0.42);
+}
+
+.calendar-day.is-goals-complete .complete-badge {
+  width: 0.75rem;
+  height: 0.75rem;
+  box-shadow: 0 0 0 0.22rem rgba(167, 240, 193, 0.18);
+  background: #c9ffd8;
 }
 
 .home-grid {
@@ -788,6 +936,19 @@ button {
   color: #ffd7d7;
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.profile-month-insight {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.profile-month-insight span {
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .avatar-room {
@@ -1162,7 +1323,10 @@ button {
   .summary-grid,
   .field-row,
   .customizer-grid,
-  .goal-builder-grid {
+  .goal-builder-grid,
+  .compact-form-grid,
+  .quick-template-chips,
+  .dashboard-insight-grid {
     grid-template-columns: 1fr;
   }
 
