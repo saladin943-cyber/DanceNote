@@ -20,23 +20,53 @@ const PRACTICE_TYPE_LABELS = {
 };
 const CHARACTER_SHEET_IMAGE = "/DANCENOTE/characters/characters.png";
 const CHARACTER_CATALOG = {
-  rhyme: {
-    label: "RHYME",
+  basic_stand: {
+    label: "기본 서기",
     image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "28% 24%",
+    imagePosition: "12.5% 25%",
     fallbackClass: "avatar-fallback-rhyme",
   },
-  beatz: {
-    label: "BEATZ",
+  happy_wave: {
+    label: "해피 웨이브",
     image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "28% 54%",
+    imagePosition: "37.5% 25%",
     fallbackClass: "avatar-fallback-beatz",
   },
-  noti: {
-    label: "NOTI",
+  jump_pose: {
+    label: "점프 포즈",
     image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "28% 82%",
+    imagePosition: "62.5% 25%",
     fallbackClass: "avatar-fallback-noti",
+  },
+  think_pose: {
+    label: "생각 포즈",
+    image: CHARACTER_SHEET_IMAGE,
+    imagePosition: "87.5% 25%",
+    fallbackClass: "avatar-fallback-beatz",
+  },
+  shy_pose: {
+    label: "수줍은 포즈",
+    image: CHARACTER_SHEET_IMAGE,
+    imagePosition: "12.5% 75%",
+    fallbackClass: "avatar-fallback-rhyme",
+  },
+  point_pose: {
+    label: "포인트 포즈",
+    image: CHARACTER_SHEET_IMAGE,
+    imagePosition: "37.5% 75%",
+    fallbackClass: "avatar-fallback-beatz",
+  },
+  sit_pose: {
+    label: "앉은 포즈",
+    image: CHARACTER_SHEET_IMAGE,
+    imagePosition: "62.5% 75%",
+    fallbackClass: "avatar-fallback-noti",
+  },
+  dance_pose: {
+    label: "댄스 포즈",
+    image: CHARACTER_SHEET_IMAGE,
+    imagePosition: "87.5% 75%",
+    fallbackClass: "avatar-fallback-rhyme",
   },
 };
 const BACKGROUND_CATALOG = {
@@ -579,7 +609,7 @@ function renderTeamRoom(team) {
       dancerName: "Beat",
       mainGenre: team.genre,
       avatar: {
-        baseCharacterId: "beatz",
+        baseCharacterId: "point_pose",
         poseId: "idle",
         lookId: "default",
         backgroundId: state.profile.avatar.backgroundId,
@@ -591,7 +621,7 @@ function renderTeamRoom(team) {
       dancerName: "Line",
       mainGenre: team.genre,
       avatar: {
-        baseCharacterId: "noti",
+        baseCharacterId: "happy_wave",
         poseId: "idle",
         lookId: "default",
         backgroundId: state.profile.avatar.backgroundId,
@@ -948,7 +978,7 @@ function renderGenreOptions(selectedValue = "breaking") {
 
 function getDefaultAvatarPreset() {
   return normalizeAvatarState({
-    baseCharacterId: "rhyme",
+    baseCharacterId: "basic_stand",
     poseId: "idle",
     lookId: "default",
     backgroundId: "back1",
@@ -976,7 +1006,13 @@ function normalizeProfileAvatar(profile) {
 }
 
 function normalizeAvatarState(avatar = {}) {
-  const baseCharacterId = CHARACTER_CATALOG[avatar.baseCharacterId] ? avatar.baseCharacterId : "rhyme";
+  const legacyCharacterMap = {
+    rhyme: "basic_stand",
+    beatz: "point_pose",
+    noti: "happy_wave",
+  };
+  const requestedCharacterId = legacyCharacterMap[avatar.baseCharacterId] || avatar.baseCharacterId;
+  const baseCharacterId = CHARACTER_CATALOG[requestedCharacterId] ? requestedCharacterId : "basic_stand";
   const legacyPoseMap = {
     idle: "idle",
     groove: "groove",
