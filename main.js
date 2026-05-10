@@ -1,5 +1,7 @@
 // Local-first storage keeps the MVP simple while preserving an easy backend migration path.
 const STORAGE_KEY = "dance-note-records-v1";
+const PROFILE_STORAGE_KEY = "dance-note-profile-v1";
+const TEAMS_STORAGE_KEY = "dance-note-teams-v1";
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const GENRE_LABELS = {
   breaking: "브레이킹",
@@ -7,11 +9,53 @@ const GENRE_LABELS = {
   choreo: "코레오",
   locking: "락킹",
   popping: "팝핀",
+  waacking: "왁킹",
+  house: "하우스",
+  krump: "크럼프",
   other: "기타",
 };
 const PRACTICE_TYPE_LABELS = {
   solo: "개인",
   team: "팀",
+};
+const AVATAR_OPTIONS = {
+  hat: {
+    none: "없음",
+    cap: "볼캡",
+    beanie: "비니",
+    bucket: "버킷햇",
+  },
+  top: {
+    tshirt: "기본 티셔츠",
+    hoodie: "후디",
+    overshirt: "오버핏 셔츠",
+    jacket: "트레이닝 자켓",
+  },
+  bottom: {
+    jogger: "조거팬츠",
+    wide: "와이드팬츠",
+    shorts: "쇼츠",
+    track: "트레이닝팬츠",
+  },
+  shoes: {
+    sneaker: "스니커즈",
+    hightop: "하이탑",
+    dance: "댄스화",
+  },
+  pose: {
+    idle: "기본 서기",
+    groove: "그루브",
+    freeze: "프리즈",
+    wave: "손 인사",
+    team: "팀 포즈",
+  },
+};
+const DEFAULT_AVATAR = {
+  hat: "none",
+  top: "tshirt",
+  bottom: "jogger",
+  shoes: "sneaker",
+  pose: "idle",
 };
 
 const mockRecords = [
@@ -99,6 +143,8 @@ const mockRecords = [
 
 const state = {
   records: loadRecords(),
+  profile: loadProfile(),
+  teams: loadTeams(),
   currentMonth: getMonthStart(new Date()),
   selectedDate: formatDateKey(new Date()),
   editingRecordId: null,
@@ -108,6 +154,7 @@ const state = {
 const elements = {
   tabButtons: document.querySelectorAll("[data-tab]"),
   tabPanels: document.querySelectorAll("[data-tab-panel]"),
+  homeContent: document.getElementById("homeContent"),
   heroSummary: document.getElementById("heroSummary"),
   monthLabel: document.getElementById("monthLabel"),
   weekdayRow: document.getElementById("weekdayRow"),
@@ -204,6 +251,7 @@ function render() {
   const selectedRecords = getRecordsByDate(state.records, state.selectedDate);
 
   renderTabs();
+  renderHome();
   elements.monthLabel.textContent = formatMonthLabel(state.currentMonth);
   elements.selectedDateLabel.textContent = formatSelectedDate(state.selectedDate);
 
@@ -232,6 +280,493 @@ function renderTabs() {
     panel.classList.toggle("is-active", isActive);
     panel.hidden = !isActive;
   });
+}
+
+function renderHome() {
+  if (!state.profile) {
+    renderProfileSetup();
+    return;
+  }
+
+  const team = getProfileTeam();
+  elements.homeContent.innerHTML = `
+    <div class="home-grid">
+      <section class="panel room-card">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">My Room</p>
+            <h2>내 미니 연습실</h2>
+          </div>
+          <span class="profile-chip">${team ? escapeHtml(team.teamName) : "Solo"}</span>
+        </div>
+        ${renderPersonalRoom()}
+      </section>
+
+      <div class="home-side-stack">
+        <section class="panel mini-room-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Dancer Profile</p>
+              <h2>${escapeHtml(state.profile.dancerName)}</h2>
+            </div>
+          </div>
+          <div class="profile-detail-grid">
+            <span>주 장르</span>
+            <strong>${GENRE_LABELS[state.profile.mainGenre] || state.profile.mainGenre}</strong>
+            <span>팀</span>
+            <strong>${team ? escapeHtml(team.teamName) : "없음"}</strong>
+            <span>현재 포즈</span>
+            <strong>${AVATAR_OPTIONS.pose[state.profile.avatar.pose]}</strong>
+            <span>최근 업데이트</span>
+            <strong>${formatRelativeDateTime(state.profile.updatedAt)}</strong>
+          </div>
+        </section>
+
+        <section class="panel mini-room-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Avatar</p>
+              <h2>아바타 수정</h2>
+            </div>
+          </div>
+          ${renderAvatarUpdateForm()}
+        </section>
+
+        <section class="panel mini-room-card">
+          ${team ? renderTeamRoom(team) : renderNoTeamState()}
+        </section>
+
+        <section class="panel mini-room-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Test Tools</p>
+              <h2>프로필 초기화</h2>
+            </div>
+          </div>
+          <p class="stat-subtext">개발/테스트용 버튼입니다. 연습 기록은 삭제하지 않습니다.</p>
+          <button class="danger-button" id="resetProfileButton" type="button">프로필 초기화</button>
+        </section>
+      </div>
+    </div>
+  `;
+  bindHomeEvents();
+}
+
+function renderProfileSetup() {
+  elements.homeContent.innerHTML = `
+    <section class="panel profile-setup">
+      <div class="setup-copy">
+        <p class="section-kicker">Home</p>
+        <h2>나의 댄서 캐릭터 만들기</h2>
+        <p>댄서 네임, 장르, 스타일을 정하고 나만의 연습실을 시작하세요.</p>
+      </div>
+
+      <form class="setup-form" id="profileSetupForm">
+        <div class="field-row">
+          <label class="field">
+            <span>댄서 네임</span>
+            <input id="setupDancerName" name="dancerName" type="text" required placeholder="예: Yugi, Rookie, Flow" />
+          </label>
+
+          <label class="field">
+            <span>주 장르</span>
+            <select id="setupMainGenre" name="mainGenre">
+              ${renderGenreOptions()}
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>팀 소속 여부</span>
+          <select id="setupTeamMode" name="teamMode">
+            <option value="none">없음</option>
+            <option value="create">새 팀 만들기</option>
+          </select>
+        </label>
+
+        <div class="team-create-fields" id="setupTeamFields" hidden>
+          <!-- Future scope: existing team selection can be added here when accounts and shared teams exist. -->
+          <div class="field-row">
+            <label class="field">
+              <span>팀 이름</span>
+              <input id="setupTeamName" name="teamName" type="text" />
+            </label>
+
+            <label class="field">
+              <span>팀 장르</span>
+              <select id="setupTeamGenre" name="teamGenre">
+                ${renderGenreOptions()}
+              </select>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>리더</span>
+            <input id="setupLeaderName" name="leaderName" type="text" />
+          </label>
+        </div>
+
+        <div class="customizer-grid">
+          ${renderAvatarFields("setup", DEFAULT_AVATAR)}
+        </div>
+
+        <button class="accent-button" type="submit">캐릭터 생성하기</button>
+      </form>
+    </section>
+  `;
+  bindHomeEvents();
+}
+
+function renderPersonalRoom() {
+  return `
+    <div class="avatar-room personal-room">
+      <div class="room-wall">
+        <div class="room-light"></div>
+        <div class="room-mirror"></div>
+        <div class="room-speaker"></div>
+      </div>
+      <div class="room-floor">
+        ${renderAvatar(state.profile, { label: state.profile.dancerName })}
+      </div>
+    </div>
+  `;
+}
+
+function renderTeamRoom(team) {
+  const mockMembers = [
+    {
+      id: "mock-1",
+      dancerName: "Beat",
+      mainGenre: team.genre,
+      avatar: { hat: "cap", top: "jacket", bottom: "track", shoes: "hightop", pose: "groove" },
+    },
+    {
+      id: "mock-2",
+      dancerName: "Line",
+      mainGenre: team.genre,
+      avatar: { hat: "beanie", top: "overshirt", bottom: "wide", shoes: "dance", pose: "wave" },
+    },
+  ];
+
+  return `
+    <div class="section-head">
+      <div>
+        <p class="section-kicker">Team Room</p>
+        <h2>팀 공간</h2>
+      </div>
+      <span class="profile-chip">${team.memberIds.length + mockMembers.length}명</span>
+    </div>
+    <div class="team-meta-grid">
+      <span>팀 이름</span>
+      <strong>${escapeHtml(team.teamName)}</strong>
+      <span>팀 장르</span>
+      <strong>${GENRE_LABELS[team.genre] || team.genre}</strong>
+      <span>리더</span>
+      <strong>${escapeHtml(team.leaderName)}</strong>
+    </div>
+    <div class="avatar-room team-room">
+      <div class="room-wall">
+        <div class="room-light"></div>
+        <div class="room-mirror"></div>
+        <div class="room-speaker"></div>
+      </div>
+      <div class="room-floor team-floor">
+        ${renderAvatar(state.profile, { label: state.profile.dancerName, size: "small" })}
+        ${mockMembers.map((member) => renderAvatar(member, { label: member.dancerName, size: "small", isMock: true })).join("")}
+      </div>
+    </div>
+    <div class="team-member-row">
+      <span>${escapeHtml(state.profile.dancerName)}</span>
+      <span>Mock teammates are preview only</span>
+    </div>
+  `;
+}
+
+function renderAvatar(profile, options = {}) {
+  const avatar = { ...DEFAULT_AVATAR, ...(profile.avatar || {}) };
+  const sizeClass = options.size === "small" ? "is-small" : "";
+  const mockClass = options.isMock ? "is-mock" : "";
+  const label = options.label || profile.dancerName;
+
+  return `
+    <div class="dancer-avatar ${sizeClass} ${mockClass} avatar-pose-${avatar.pose} avatar-top-${avatar.top} avatar-bottom-${avatar.bottom} avatar-shoes-${avatar.shoes}">
+      <div class="avatar-hat avatar-hat-${avatar.hat}">${avatar.hat === "none" ? "" : AVATAR_OPTIONS.hat[avatar.hat]}</div>
+      <div class="avatar-head"></div>
+      <div class="avatar-arms"></div>
+      <div class="avatar-body">${AVATAR_OPTIONS.top[avatar.top]}</div>
+      <div class="avatar-legs">${AVATAR_OPTIONS.bottom[avatar.bottom]}</div>
+      <div class="avatar-shoes">${AVATAR_OPTIONS.shoes[avatar.shoes]}</div>
+      <div class="avatar-label">${escapeHtml(label)}</div>
+    </div>
+  `;
+}
+
+function renderAvatarUpdateForm() {
+  return `
+    <form class="setup-form" id="avatarUpdateForm">
+      <div class="field-row">
+        <label class="field">
+          <span>댄서 네임</span>
+          <input id="updateDancerName" name="dancerName" type="text" required value="${escapeHtml(state.profile.dancerName)}" />
+        </label>
+        <label class="field">
+          <span>주 장르</span>
+          <select id="updateMainGenre" name="mainGenre">
+            ${renderGenreOptions(state.profile.mainGenre)}
+          </select>
+        </label>
+      </div>
+      <div class="customizer-grid">
+        ${renderAvatarFields("update", { ...DEFAULT_AVATAR, ...state.profile.avatar })}
+      </div>
+      <button class="accent-button" type="submit">아바타 저장</button>
+    </form>
+  `;
+}
+
+function renderNoTeamState() {
+  return `
+    <div class="section-head">
+      <div>
+        <p class="section-kicker">Team Room</p>
+        <h2>팀이 아직 없습니다</h2>
+      </div>
+    </div>
+    <p class="stat-subtext">대표 팀은 현재 MVP에서 0개 또는 1개만 사용할 수 있습니다.</p>
+    <button class="ghost-button" id="createTeamButton" type="button">팀 만들기</button>
+    <div id="inlineTeamForm" class="inline-team-form" hidden>
+      ${renderTeamCreateForm()}
+    </div>
+  `;
+}
+
+function renderTeamCreateForm() {
+  return `
+    <form class="setup-form" id="teamCreateForm">
+      <div class="field-row">
+        <label class="field">
+          <span>팀 이름</span>
+          <input id="teamCreateName" name="teamName" type="text" required />
+        </label>
+        <label class="field">
+          <span>팀 장르</span>
+          <select id="teamCreateGenre" name="teamGenre">
+            ${renderGenreOptions(state.profile?.mainGenre || "breaking")}
+          </select>
+        </label>
+      </div>
+      <label class="field">
+        <span>리더</span>
+        <input id="teamCreateLeader" name="leaderName" type="text" required value="${escapeHtml(state.profile?.dancerName || "")}" />
+      </label>
+      <button class="accent-button" type="submit">팀 생성하기</button>
+    </form>
+  `;
+}
+
+function renderAvatarFields(prefix, avatar) {
+  return Object.entries(AVATAR_OPTIONS)
+    .map(([key, options]) => {
+      const fieldId = `${prefix}${capitalize(key)}`;
+      return `
+        <label class="field">
+          <span>${getAvatarFieldLabel(key)}</span>
+          <select id="${fieldId}" name="${key}">
+            ${Object.entries(options)
+              .map(
+                ([value, label]) =>
+                  `<option value="${value}" ${avatar[key] === value ? "selected" : ""}>${label}</option>`,
+              )
+              .join("")}
+          </select>
+        </label>
+      `;
+    })
+    .join("");
+}
+
+function bindHomeEvents() {
+  const setupForm = document.getElementById("profileSetupForm");
+  const avatarUpdateForm = document.getElementById("avatarUpdateForm");
+  const teamCreateForm = document.getElementById("teamCreateForm");
+  const teamModeSelect = document.getElementById("setupTeamMode");
+  const dancerNameInput = document.getElementById("setupDancerName");
+  const leaderNameInput = document.getElementById("setupLeaderName");
+  const createTeamButton = document.getElementById("createTeamButton");
+  const resetProfileButton = document.getElementById("resetProfileButton");
+
+  setupForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    createProfileFromForm();
+  });
+
+  avatarUpdateForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    updateAvatarFromForm();
+  });
+
+  teamCreateForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    createTeamFromForm();
+  });
+
+  teamModeSelect?.addEventListener("change", () => {
+    const teamFields = document.getElementById("setupTeamFields");
+    const shouldCreateTeam = teamModeSelect.value === "create";
+    teamFields.hidden = !shouldCreateTeam;
+    document.getElementById("setupTeamName").required = shouldCreateTeam;
+    document.getElementById("setupLeaderName").required = shouldCreateTeam;
+    if (shouldCreateTeam && !leaderNameInput.value.trim()) {
+      leaderNameInput.value = dancerNameInput.value.trim();
+    }
+  });
+
+  dancerNameInput?.addEventListener("input", () => {
+    if (teamModeSelect?.value === "create" && leaderNameInput && !leaderNameInput.dataset.touched) {
+      leaderNameInput.value = dancerNameInput.value.trim();
+    }
+  });
+
+  leaderNameInput?.addEventListener("input", () => {
+    leaderNameInput.dataset.touched = "true";
+  });
+
+  createTeamButton?.addEventListener("click", () => {
+    const formWrap = document.getElementById("inlineTeamForm");
+    formWrap.hidden = !formWrap.hidden;
+  });
+
+  resetProfileButton?.addEventListener("click", resetProfile);
+}
+
+function createProfileFromForm() {
+  const now = new Date().toISOString();
+  const teamMode = document.getElementById("setupTeamMode").value;
+  const dancerName = document.getElementById("setupDancerName").value.trim();
+  const profile = {
+    id: createScopedId("profile"),
+    dancerName,
+    mainGenre: document.getElementById("setupMainGenre").value,
+    teamId: null,
+    avatar: readAvatarFromForm("setup"),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (teamMode === "create") {
+    const team = {
+      id: createScopedId("team"),
+      teamName: document.getElementById("setupTeamName").value.trim(),
+      genre: document.getElementById("setupTeamGenre").value,
+      leaderName: document.getElementById("setupLeaderName").value.trim() || dancerName,
+      memberIds: [profile.id],
+      createdAt: now,
+      updatedAt: now,
+    };
+    state.teams = [team];
+    profile.teamId = team.id;
+    persistTeams();
+  }
+
+  state.profile = profile;
+  persistProfile();
+  renderHome();
+}
+
+function updateAvatarFromForm() {
+  if (!state.profile) {
+    return;
+  }
+
+  state.profile = {
+    ...state.profile,
+    dancerName: document.getElementById("updateDancerName").value.trim(),
+    mainGenre: document.getElementById("updateMainGenre").value,
+    avatar: readAvatarFromForm("update"),
+    updatedAt: new Date().toISOString(),
+  };
+  persistProfile();
+  renderHome();
+}
+
+function createTeamFromForm() {
+  if (!state.profile) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const team = {
+    id: createScopedId("team"),
+    teamName: document.getElementById("teamCreateName").value.trim(),
+    genre: document.getElementById("teamCreateGenre").value,
+    leaderName: document.getElementById("teamCreateLeader").value.trim(),
+    memberIds: [state.profile.id],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // Data hierarchy for the Firebase migration path:
+  // Team -> Dancer Profile -> Practice Records.
+  state.teams = [team];
+  state.profile = {
+    ...state.profile,
+    teamId: team.id,
+    updatedAt: now,
+  };
+  persistTeams();
+  persistProfile();
+  renderHome();
+}
+
+function getProfileTeam() {
+  if (!state.profile?.teamId) {
+    return null;
+  }
+  return state.teams.find((team) => team.id === state.profile.teamId) || null;
+}
+
+function resetProfile() {
+  if (!window.confirm("프로필을 초기화할까요? 연습 기록은 유지됩니다.")) {
+    return;
+  }
+
+  const shouldDeleteTeams = window.confirm("연결된 팀 데이터도 삭제할까요?");
+  state.profile = null;
+  window.localStorage.removeItem(PROFILE_STORAGE_KEY);
+
+  if (shouldDeleteTeams) {
+    state.teams = [];
+    window.localStorage.removeItem(TEAMS_STORAGE_KEY);
+  }
+
+  renderHome();
+}
+
+function readAvatarFromForm(prefix) {
+  return {
+    hat: document.getElementById(`${prefix}Hat`).value,
+    top: document.getElementById(`${prefix}Top`).value,
+    bottom: document.getElementById(`${prefix}Bottom`).value,
+    shoes: document.getElementById(`${prefix}Shoes`).value,
+    pose: document.getElementById(`${prefix}Pose`).value,
+  };
+}
+
+function renderGenreOptions(selectedValue = "breaking") {
+  return Object.entries(GENRE_LABELS)
+    .map(([value, label]) => `<option value="${value}" ${value === selectedValue ? "selected" : ""}>${label}</option>`)
+    .join("");
+}
+
+function getAvatarFieldLabel(key) {
+  const labels = {
+    hat: "모자",
+    top: "상의",
+    bottom: "하의",
+    shoes: "신발",
+    pose: "포즈",
+  };
+  return labels[key];
 }
 
 function renderHero(monthRecords) {
@@ -604,6 +1139,48 @@ function focusForm() {
   elements.goal.focus();
 }
 
+function loadProfile() {
+  const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    console.error("Failed to parse profile from storage.", error);
+    return null;
+  }
+}
+
+function persistProfile() {
+  if (!state.profile) {
+    window.localStorage.removeItem(PROFILE_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(state.profile));
+}
+
+function loadTeams() {
+  const raw = window.localStorage.getItem(TEAMS_STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error("Failed to parse teams from storage.", error);
+    return [];
+  }
+}
+
+function persistTeams() {
+  window.localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(state.teams));
+}
+
 function loadRecords() {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) {
@@ -754,4 +1331,12 @@ function escapeHtml(value) {
 
 function createId() {
   return `rec-${crypto.randomUUID()}`;
+}
+
+function createScopedId(scope) {
+  return `${scope}-${crypto.randomUUID()}`;
+}
+
+function capitalize(value) {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
