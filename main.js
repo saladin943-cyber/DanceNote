@@ -18,109 +18,39 @@ const PRACTICE_TYPE_LABELS = {
   solo: "개인",
   team: "팀",
 };
+const CHARACTER_SHEET_IMAGE = "/DANCENOTE/characters/characters.png";
 const CHARACTER_CATALOG = {
   rhyme: {
     label: "RHYME",
-    looks: {
-      coral_hoodie: {
-        label: "코랄 후디",
-        poses: {
-          idle: "public/assets/avatar-presets/rhyme__idle__coral_hoodie.svg",
-          groove: "public/assets/avatar-presets/rhyme__groove__dance_pose.svg",
-          point: "public/assets/avatar-presets/rhyme__point__note_pose.svg",
-        },
-      },
-      dance_pose: {
-        label: "댄스 포즈",
-        poses: {
-          idle: "public/assets/avatar-presets/rhyme__idle__coral_hoodie.svg",
-          groove: "public/assets/avatar-presets/rhyme__groove__dance_pose.svg",
-          wave: "public/assets/avatar-presets/rhyme__point__note_pose.svg",
-        },
-      },
-      note_pose: {
-        label: "노트 포즈",
-        poses: {
-          idle: "public/assets/avatar-presets/rhyme__idle__coral_hoodie.svg",
-          point: "public/assets/avatar-presets/rhyme__point__note_pose.svg",
-          wave: "public/assets/avatar-presets/rhyme__point__note_pose.svg",
-        },
-      },
-    },
+    image: CHARACTER_SHEET_IMAGE,
+    imagePosition: "28% 24%",
+    fallbackClass: "avatar-fallback-rhyme",
   },
   beatz: {
     label: "BEATZ",
-    looks: {
-      mint_jacket: {
-        label: "민트 자켓",
-        poses: {
-          idle: "public/assets/avatar-presets/beatz__idle__mint_jacket.svg",
-          groove: "public/assets/avatar-presets/beatz__idle__mint_jacket.svg",
-          point: "public/assets/avatar-presets/beatz__point__clipboard.svg",
-        },
-      },
-      clipboard: {
-        label: "클립보드",
-        poses: {
-          idle: "public/assets/avatar-presets/beatz__idle__mint_jacket.svg",
-          point: "public/assets/avatar-presets/beatz__point__clipboard.svg",
-          wave: "public/assets/avatar-presets/beatz__point__clipboard.svg",
-        },
-      },
-      stretch: {
-        label: "스트레칭",
-        poses: {
-          idle: "public/assets/avatar-presets/beatz__idle__mint_jacket.svg",
-          sit: "public/assets/avatar-presets/beatz__sit__stretch.svg",
-          groove: "public/assets/avatar-presets/beatz__sit__stretch.svg",
-        },
-      },
-    },
+    image: CHARACTER_SHEET_IMAGE,
+    imagePosition: "28% 54%",
+    fallbackClass: "avatar-fallback-beatz",
   },
   noti: {
     label: "NOTI",
-    looks: {
-      cheerful: {
-        label: "치어풀",
-        poses: {
-          idle: "public/assets/avatar-presets/noti__idle__cheerful.svg",
-          wave: "public/assets/avatar-presets/noti__wave__helper.svg",
-        },
-      },
-      bounce: {
-        label: "바운스",
-        poses: {
-          idle: "public/assets/avatar-presets/noti__idle__cheerful.svg",
-          groove: "public/assets/avatar-presets/noti__groove__bounce.svg",
-        },
-      },
-      helper: {
-        label: "헬퍼",
-        poses: {
-          idle: "public/assets/avatar-presets/noti__idle__cheerful.svg",
-          wave: "public/assets/avatar-presets/noti__wave__helper.svg",
-          point: "public/assets/avatar-presets/noti__wave__helper.svg",
-        },
-      },
-    },
+    image: CHARACTER_SHEET_IMAGE,
+    imagePosition: "28% 82%",
+    fallbackClass: "avatar-fallback-noti",
   },
 };
 const BACKGROUND_CATALOG = {
-  cozy_night_room: {
-    label: "Cozy Studio Night",
-    image: "public/assets/backgrounds/cozy-night-room.svg",
+  back1: {
+    label: "Back 1",
+    image: "/DANCENOTE/backgrounds/back1.png",
   },
-  dance_studio_pink: {
-    label: "DanceNote Studio",
-    image: "public/assets/backgrounds/dance-studio-pink.svg",
+  back2: {
+    label: "Back 2",
+    image: "/DANCENOTE/backgrounds/back2.png",
   },
-  character_concept_wall: {
-    label: "Character Concept Wall",
-    image: "public/assets/backgrounds/concept-wall.svg",
-  },
-  bright_practice_room: {
-    label: "Bright Practice Room",
-    image: "public/assets/backgrounds/bright-practice-room.svg",
+  back3: {
+    label: "Back 3",
+    image: "/DANCENOTE/backgrounds/back3.png",
   },
 };
 const POSE_LABELS = {
@@ -129,9 +59,6 @@ const POSE_LABELS = {
   point: "포인트",
   sit: "앉기",
   wave: "손 인사",
-};
-const ACCESSORY_LABELS = {
-  none: "없음",
 };
 const avatarBuilderState = {
   setup: null,
@@ -520,8 +447,6 @@ function renderHome() {
             <strong>${team ? escapeHtml(team.teamName) : "없음"}</strong>
             <span>캐릭터</span>
             <strong>${getCharacterLabel(avatar.baseCharacterId)}</strong>
-            <span>현재 포즈</span>
-            <strong>${POSE_LABELS[avatar.poseId] || avatar.poseId}</strong>
             <span>배경</span>
             <strong>${BACKGROUND_CATALOG[avatar.backgroundId]?.label || avatar.backgroundId}</strong>
             <span>최근 업데이트</span>
@@ -634,7 +559,12 @@ function renderPersonalRoom() {
   const profile = normalizeProfileAvatar(state.profile);
   return `
     <div class="room-image-stage personal-room">
-      <img class="preview-background" src="${profile.avatarPreview.backgroundImage}" alt="" />
+      <img
+        class="preview-background"
+        src="${profile.avatarPreview.backgroundImage}"
+        alt=""
+        onerror="this.closest('.room-image-stage').classList.add('uses-background-fallback')"
+      />
       <div class="room-stage-shade"></div>
       ${renderAvatar(profile, { label: profile.dancerName })}
     </div>
@@ -650,8 +580,8 @@ function renderTeamRoom(team) {
       mainGenre: team.genre,
       avatar: {
         baseCharacterId: "beatz",
-        poseId: "point",
-        lookId: "clipboard",
+        poseId: "idle",
+        lookId: "default",
         backgroundId: state.profile.avatar.backgroundId,
         accessoryId: null,
       },
@@ -662,8 +592,8 @@ function renderTeamRoom(team) {
       mainGenre: team.genre,
       avatar: {
         baseCharacterId: "noti",
-        poseId: "wave",
-        lookId: "helper",
+        poseId: "idle",
+        lookId: "default",
         backgroundId: state.profile.avatar.backgroundId,
         accessoryId: null,
       },
@@ -687,7 +617,12 @@ function renderTeamRoom(team) {
       <strong>${escapeHtml(team.leaderName)}</strong>
     </div>
     <div class="avatar-room team-room">
-      <img class="preview-background" src="${backgroundImage}" alt="" />
+      <img
+        class="preview-background"
+        src="${backgroundImage}"
+        alt=""
+        onerror="this.closest('.avatar-room').classList.add('uses-background-fallback')"
+      />
       <div class="room-stage-shade"></div>
       <div class="room-floor team-floor image-team-floor">
         ${renderAvatar(state.profile, { label: state.profile.dancerName, size: "small" })}
@@ -709,7 +644,14 @@ function renderAvatar(profile, options = {}) {
 
   return `
     <div class="dancer-avatar-image ${sizeClass} ${mockClass}">
-      <img class="preview-character" src="${normalizedProfile.avatarPreview.characterImage}" alt="${escapeHtml(label)} 캐릭터" />
+      <img
+        class="preview-character"
+        src="${normalizedProfile.avatarPreview.characterImage}"
+        alt="${escapeHtml(label)} 캐릭터"
+        style="object-position: ${getCharacterImagePosition(normalizedProfile.avatar)}"
+        onerror="this.closest('.dancer-avatar-image').classList.add('uses-css-fallback')"
+      />
+      ${renderCssAvatarFallback(normalizedProfile.avatar)}
       <div class="avatar-label">${escapeHtml(label)}</div>
     </div>
   `;
@@ -785,9 +727,6 @@ function renderAvatarBuilder(scope, avatar) {
         ${renderAvatarPreviewStage(scope, normalizedAvatar)}
         <div class="selector-list">
           ${renderArrowSelector({ scope, key: "baseCharacterId", label: "캐릭터 타입", valueLabel: getCharacterLabel(normalizedAvatar.baseCharacterId) })}
-          ${renderArrowSelector({ scope, key: "poseId", label: "포즈", valueLabel: POSE_LABELS[normalizedAvatar.poseId] || normalizedAvatar.poseId })}
-          ${renderArrowSelector({ scope, key: "lookId", label: "스타일/룩", valueLabel: getLookLabel(normalizedAvatar) })}
-          ${renderArrowSelector({ scope, key: "accessoryId", label: "액세서리", valueLabel: ACCESSORY_LABELS[normalizedAvatar.accessoryId || "none"] })}
           ${renderArrowSelector({ scope, key: "backgroundId", label: "배경", valueLabel: BACKGROUND_CATALOG[normalizedAvatar.backgroundId]?.label || normalizedAvatar.backgroundId })}
         </div>
       </div>
@@ -801,9 +740,23 @@ function renderAvatarPreviewStage(scope, avatar) {
   return `
     <div class="avatar-preview-wrap">
       <div class="avatar-preview-stage" id="${scope}AvatarPreviewStage">
-        <img class="preview-background" data-preview-background="${scope}" src="${backgroundImage}" alt="" />
+        <img
+          class="preview-background"
+          data-preview-background="${scope}"
+          src="${backgroundImage}"
+          alt=""
+          onerror="this.closest('.avatar-preview-stage').classList.add('uses-background-fallback')"
+        />
         <div class="room-stage-shade"></div>
-        <img class="preview-character" data-preview-character="${scope}" src="${characterImage}" alt="캐릭터 미리보기" />
+        <img
+          class="preview-character"
+          data-preview-character="${scope}"
+          src="${characterImage}"
+          alt="캐릭터 미리보기"
+          style="object-position: ${getCharacterImagePosition(avatar)}"
+          onerror="this.closest('.avatar-preview-stage').classList.add('uses-character-fallback')"
+        />
+        ${renderCssAvatarFallback(avatar)}
       </div>
       <div class="preview-caption" id="${scope}PreviewCaption">${getPreviewCaption(avatar)}</div>
     </div>
@@ -997,8 +950,8 @@ function getDefaultAvatarPreset() {
   return normalizeAvatarState({
     baseCharacterId: "rhyme",
     poseId: "idle",
-    lookId: "coral_hoodie",
-    backgroundId: "cozy_night_room",
+    lookId: "default",
+    backgroundId: "back1",
     accessoryId: null,
   });
 }
@@ -1024,10 +977,6 @@ function normalizeProfileAvatar(profile) {
 
 function normalizeAvatarState(avatar = {}) {
   const baseCharacterId = CHARACTER_CATALOG[avatar.baseCharacterId] ? avatar.baseCharacterId : "rhyme";
-  const character = CHARACTER_CATALOG[baseCharacterId];
-  const lookIds = Object.keys(character.looks);
-  const lookId = character.looks[avatar.lookId] ? avatar.lookId : lookIds[0];
-  const poseIds = Object.keys(character.looks[lookId].poses);
   const legacyPoseMap = {
     idle: "idle",
     groove: "groove",
@@ -1036,13 +985,13 @@ function normalizeAvatarState(avatar = {}) {
     team: "groove",
   };
   const requestedPose = avatar.poseId || legacyPoseMap[avatar.pose] || avatar.pose;
-  const poseId = character.looks[lookId].poses[requestedPose] ? requestedPose : poseIds[0];
-  const backgroundId = BACKGROUND_CATALOG[avatar.backgroundId] ? avatar.backgroundId : "cozy_night_room";
+  const poseId = POSE_LABELS[requestedPose] ? requestedPose : "idle";
+  const backgroundId = BACKGROUND_CATALOG[avatar.backgroundId] ? avatar.backgroundId : "back1";
 
   return {
     baseCharacterId,
     poseId,
-    lookId,
+    lookId: avatar.lookId || "default",
     backgroundId,
     accessoryId: avatar.accessoryId || null,
   };
@@ -1063,20 +1012,11 @@ function cycleAvatarOption(key, direction, scope) {
   const nextValue = options[nextIndex];
 
   if (key === "baseCharacterId") {
-    const character = CHARACTER_CATALOG[nextValue];
-    const lookId = Object.keys(character.looks)[0];
     nextAvatar = {
       ...nextAvatar,
       baseCharacterId: nextValue,
-      lookId,
-      poseId: Object.keys(character.looks[lookId].poses)[0],
-    };
-  } else if (key === "lookId") {
-    const poses = CHARACTER_CATALOG[current.baseCharacterId].looks[nextValue].poses;
-    nextAvatar = {
-      ...nextAvatar,
-      lookId: nextValue,
-      poseId: poses[current.poseId] ? current.poseId : Object.keys(poses)[0],
+      lookId: "default",
+      poseId: "idle",
     };
   } else if (key === "accessoryId") {
     nextAvatar.accessoryId = nextValue === "none" ? null : nextValue;
@@ -1093,11 +1033,8 @@ function getAvatarOptionValues(key, avatar) {
   if (key === "baseCharacterId") {
     return Object.keys(CHARACTER_CATALOG);
   }
-  if (key === "lookId") {
-    return Object.keys(CHARACTER_CATALOG[avatar.baseCharacterId].looks);
-  }
   if (key === "poseId") {
-    return Object.keys(CHARACTER_CATALOG[avatar.baseCharacterId].looks[avatar.lookId].poses);
+    return ["idle"];
   }
   if (key === "backgroundId") {
     return Object.keys(BACKGROUND_CATALOG);
@@ -1116,9 +1053,12 @@ function renderCharacterBuilderPreview(scope) {
 
   if (characterImage) {
     characterImage.src = getCharacterImagePath(avatar);
+    characterImage.style.objectPosition = getCharacterImagePosition(avatar);
+    characterImage.closest(".avatar-preview-stage")?.classList.remove("uses-character-fallback");
   }
   if (backgroundImage) {
     backgroundImage.src = getBackgroundImagePath(avatar.backgroundId);
+    backgroundImage.closest(".avatar-preview-stage")?.classList.remove("uses-background-fallback");
   }
   if (caption) {
     caption.textContent = getPreviewCaption(avatar);
@@ -1129,9 +1069,6 @@ function syncAvatarBuilderLabels(scope) {
   const avatar = getCurrentAvatarBuilderState(scope);
   const labels = {
     baseCharacterId: getCharacterLabel(avatar.baseCharacterId),
-    poseId: POSE_LABELS[avatar.poseId] || avatar.poseId,
-    lookId: getLookLabel(avatar),
-    accessoryId: ACCESSORY_LABELS[avatar.accessoryId || "none"],
     backgroundId: BACKGROUND_CATALOG[avatar.backgroundId]?.label || avatar.backgroundId,
   };
 
@@ -1145,26 +1082,40 @@ function syncAvatarBuilderLabels(scope) {
 
 function getCharacterImagePath(avatar) {
   const normalizedAvatar = normalizeAvatarState(avatar);
-  const look = CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].looks[normalizedAvatar.lookId];
-  return look.poses[normalizedAvatar.poseId] || Object.values(look.poses)[0];
+  return CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].image;
+}
+
+function getCharacterImagePosition(avatar) {
+  const normalizedAvatar = normalizeAvatarState(avatar);
+  return CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].imagePosition;
 }
 
 function getBackgroundImagePath(backgroundId) {
-  return BACKGROUND_CATALOG[backgroundId]?.image || BACKGROUND_CATALOG.cozy_night_room.image;
+  return BACKGROUND_CATALOG[backgroundId]?.image || BACKGROUND_CATALOG.back1.image;
 }
 
 function getCharacterLabel(baseCharacterId) {
   return CHARACTER_CATALOG[baseCharacterId]?.label || baseCharacterId;
 }
 
-function getLookLabel(avatar) {
-  const normalizedAvatar = normalizeAvatarState(avatar);
-  return CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].looks[normalizedAvatar.lookId]?.label || normalizedAvatar.lookId;
-}
-
 function getPreviewCaption(avatar) {
   const normalizedAvatar = normalizeAvatarState(avatar);
-  return `${getCharacterLabel(normalizedAvatar.baseCharacterId)} · ${getLookLabel(normalizedAvatar)} · ${POSE_LABELS[normalizedAvatar.poseId] || normalizedAvatar.poseId}`;
+  return `${getCharacterLabel(normalizedAvatar.baseCharacterId)} · ${BACKGROUND_CATALOG[normalizedAvatar.backgroundId]?.label || normalizedAvatar.backgroundId}`;
+}
+
+function getCharacterFallbackClass(avatar) {
+  const normalizedAvatar = normalizeAvatarState(avatar);
+  return CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].fallbackClass;
+}
+
+function renderCssAvatarFallback(avatar) {
+  return `
+    <div class="avatar-fallback-shape ${getCharacterFallbackClass(avatar)}" aria-hidden="true">
+      <span class="avatar-fallback-head"></span>
+      <span class="avatar-fallback-body"></span>
+      <span class="avatar-fallback-legs"></span>
+    </div>
+  `;
 }
 
 function renderHero(monthRecords) {
