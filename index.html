@@ -1,16 +1,160 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hello World</title>
-  <link href='/style.css' rel='stylesheet'>
+  <meta name="theme-color" content="#101010" />
+  <title>DanceNote</title>
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <h1>Hello, world!</h1>
-  <button onclick="console.log('hello');">Press me</button>
-  <script defer type="text/javascript" src="/main.js"></script>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Dance Practice Journal</p>
+        <h1>DanceNote</h1>
+        <p class="hero-text">
+          날짜별 연습 흐름을 가볍게 기록하고, 이번 달 리듬을 한 화면에서 확인하는 춤 연습 노트입니다.
+        </p>
+      </div>
+      <div class="hero-summary" id="heroSummary"></div>
+    </header>
+
+    <main class="layout">
+      <section class="left-column">
+        <div class="panel month-panel">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Calendar</p>
+              <h2 id="monthLabel">2026년 4월</h2>
+            </div>
+            <div class="month-actions">
+              <button class="ghost-button" id="prevMonthButton" type="button">이전</button>
+              <button class="ghost-button" id="todayButton" type="button">오늘</button>
+              <button class="ghost-button" id="nextMonthButton" type="button">다음</button>
+            </div>
+          </div>
+
+          <div class="legend">
+            <span><i class="dot dot-soft"></i>가벼운 연습</span>
+            <span><i class="dot dot-medium"></i>집중 연습</span>
+            <span><i class="dot dot-strong"></i>고강도 연습</span>
+            <span><i class="dot dot-complete"></i>목표 달성</span>
+          </div>
+
+          <div class="weekday-row" id="weekdayRow"></div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <section class="stats-grid" id="statsGrid"></section>
+      </section>
+
+      <aside class="right-column">
+        <section class="panel selected-panel">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Selected Day</p>
+              <h2 id="selectedDateLabel"></h2>
+            </div>
+            <button class="accent-button" id="newRecordButton" type="button">기록 추가</button>
+          </div>
+
+          <div class="daily-summary" id="dailySummary"></div>
+          <div class="record-list" id="recordList"></div>
+        </section>
+
+        <section class="panel form-panel">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Write Record</p>
+              <h2 id="formTitle">새 연습 기록</h2>
+            </div>
+          </div>
+
+          <form id="recordForm" class="record-form">
+            <input id="recordId" name="recordId" type="hidden" />
+
+            <label class="field">
+              <span>연습 날짜</span>
+              <input id="practiceDate" name="practiceDate" type="date" required />
+            </label>
+
+            <div class="field-row">
+              <label class="field">
+                <span>연습 유형</span>
+                <select id="practiceType" name="practiceType">
+                  <option value="solo">개인</option>
+                  <option value="team">팀</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>장르</span>
+                <select id="genre" name="genre">
+                  <option value="breaking">브레이킹</option>
+                  <option value="hiphop">힙합</option>
+                  <option value="choreo">코레오</option>
+                  <option value="locking">락킹</option>
+                  <option value="popping">팝핀</option>
+                  <option value="other">기타</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="field">
+              <span>연습 시간</span>
+              <input id="durationMinutes" name="durationMinutes" type="number" min="10" step="10" required />
+            </label>
+
+            <label class="field">
+              <span>오늘의 목표</span>
+              <textarea id="goal" name="goal" rows="2" placeholder="예: 프리즈 연결 10회 안정화"></textarea>
+            </label>
+
+            <label class="field">
+              <span>실제 연습 내용</span>
+              <textarea id="practiceNotes" name="practiceNotes" rows="3" placeholder="어떤 흐름으로 연습했는지 짧게 적어보세요"></textarea>
+            </label>
+
+            <label class="field">
+              <span>느낀 점</span>
+              <textarea id="reflection" name="reflection" rows="2" placeholder="몸 상태, 집중도, 감각을 기록하세요"></textarea>
+            </label>
+
+            <label class="field">
+              <span>다음 연습 과제</span>
+              <textarea id="nextTask" name="nextTask" rows="2" placeholder="다음 세션에서 이어갈 포인트"></textarea>
+            </label>
+
+            <div class="field-row">
+              <label class="field">
+                <span>컨디션 점수</span>
+                <input id="conditionScore" name="conditionScore" type="range" min="1" max="5" value="3" />
+                <strong class="range-value" id="conditionValue">3</strong>
+              </label>
+
+              <label class="field">
+                <span>만족도 점수</span>
+                <input id="satisfactionScore" name="satisfactionScore" type="range" min="1" max="5" value="3" />
+                <strong class="range-value" id="satisfactionValue">3</strong>
+              </label>
+            </div>
+
+            <label class="checkbox-field">
+              <input id="goalCompleted" name="goalCompleted" type="checkbox" />
+              <span>오늘 목표를 충분히 달성했어요</span>
+            </label>
+
+            <div class="form-actions">
+              <button class="ghost-button" id="resetFormButton" type="button">초기화</button>
+              <button class="accent-button" type="submit">저장</button>
+            </div>
+          </form>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script defer src="/main.js"></script>
 </body>
 </html>
-
-1
