@@ -584,6 +584,142 @@ button {
   line-height: 1.5;
 }
 
+.goal-builder {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.goal-builder h3,
+.goal-builder p {
+  margin: 0;
+}
+
+.goal-builder p {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.goal-builder-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(7rem, 0.6fr) minmax(7rem, 0.6fr);
+  gap: 0.75rem;
+}
+
+.goal-block-list,
+.move-stat-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.goal-block-list.is-compact {
+  gap: 0.5rem;
+}
+
+.goal-block-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.goal-block-main,
+.goal-block-meta,
+.move-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.goal-block-main {
+  flex-wrap: wrap;
+}
+
+.goal-block-main span,
+.goal-block-meta,
+.move-stat-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.goal-progress {
+  overflow: hidden;
+  width: 100%;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.goal-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(242, 140, 140, 0.55), var(--accent-strong));
+}
+
+.goal-remove-button {
+  min-height: 1.9rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.recent-move-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.move-chip,
+.location-tag {
+  border: 1px solid rgba(242, 140, 140, 0.26);
+}
+
+.move-chip {
+  min-height: 2.2rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: #ffd7d7;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.move-stat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.move-stat-title {
+  font-weight: 800;
+}
+
+.calendar-move-badge {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(242, 140, 140, 0.2);
+  color: #ffd7d7;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
 .home-grid {
   display: grid;
   gap: 1rem;
@@ -1025,7 +1161,8 @@ button {
   .stats-grid,
   .summary-grid,
   .field-row,
-  .customizer-grid {
+  .customizer-grid,
+  .goal-builder-grid {
     grid-template-columns: 1fr;
   }
 

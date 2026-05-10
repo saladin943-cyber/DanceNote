@@ -99,6 +99,9 @@
                       <option value="choreo">코레오</option>
                       <option value="locking">락킹</option>
                       <option value="popping">팝핀</option>
+                      <option value="waacking">왁킹</option>
+                      <option value="house">하우스</option>
+                      <option value="krump">크럼프</option>
                       <option value="other">기타</option>
                     </select>
                   </label>
@@ -109,9 +112,46 @@
                   <input id="durationMinutes" name="durationMinutes" type="number" min="10" step="10" required />
                 </label>
 
+                <!-- Compatibility fields kept for the legacy record shape. The visible goal UI now uses goalBlocks. -->
+                <input id="goal" name="goal" type="hidden" />
+                <input id="goalCompleted" name="goalCompleted" type="checkbox" hidden />
+
+                <section class="goal-builder">
+                  <div>
+                    <h3>오늘의 목표</h3>
+                    <p>동작과 횟수를 블록으로 남기면 다음 연습에서 빠르게 다시 불러올 수 있어요.</p>
+                  </div>
+
+                  <div class="goal-builder-grid">
+                    <label class="field">
+                      <span>동작명</span>
+                      <input id="goalMoveName" name="goalMoveName" type="text" placeholder="예: 윈드밀, 프리즈, 탑락, 루틴 런스루" />
+                    </label>
+
+                    <label class="field">
+                      <span>목표 횟수</span>
+                      <input id="goalTargetCount" name="goalTargetCount" type="number" min="1" value="10" />
+                    </label>
+
+                    <label class="field">
+                      <span>실제 수행 횟수</span>
+                      <input id="goalCompletedCount" name="goalCompletedCount" type="number" min="0" value="0" />
+                    </label>
+                  </div>
+
+                  <button class="ghost-button" id="addGoalBlockButton" type="button">목표 블록 추가</button>
+
+                  <div>
+                    <p class="section-kicker">Recent Moves</p>
+                    <div class="recent-move-chips" id="recentMoveChips"></div>
+                  </div>
+
+                  <div class="goal-block-list" id="goalBlockList"></div>
+                </section>
+
                 <label class="field">
-                  <span>오늘의 목표</span>
-                  <textarea id="goal" name="goal" rows="2" placeholder="예: 프리즈 연결 10회 안정화"></textarea>
+                  <span>장소</span>
+                  <input id="location" name="location" type="text" placeholder="예: 연습실, 집, 팀 스튜디오" />
                 </label>
 
                 <label class="field">
@@ -142,11 +182,6 @@
                     <strong class="range-value" id="satisfactionValue">3</strong>
                   </label>
                 </div>
-
-                <label class="checkbox-field">
-                  <input id="goalCompleted" name="goalCompleted" type="checkbox" />
-                  <span>오늘 목표를 충분히 달성했어요</span>
-                </label>
 
                 <div class="form-actions">
                   <button class="ghost-button" id="resetFormButton" type="button">초기화</button>
