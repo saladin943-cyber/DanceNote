@@ -102,9 +102,12 @@ const state = {
   currentMonth: getMonthStart(new Date()),
   selectedDate: formatDateKey(new Date()),
   editingRecordId: null,
+  activeTab: "home",
 };
 
 const elements = {
+  tabButtons: document.querySelectorAll("[data-tab]"),
+  tabPanels: document.querySelectorAll("[data-tab-panel]"),
   heroSummary: document.getElementById("heroSummary"),
   monthLabel: document.getElementById("monthLabel"),
   weekdayRow: document.getElementById("weekdayRow"),
@@ -146,6 +149,12 @@ function init() {
 }
 
 function bindEvents() {
+  elements.tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setActiveTab(button.dataset.tab);
+    });
+  });
+
   elements.prevMonthButton.addEventListener("click", () => {
     state.currentMonth = addMonths(state.currentMonth, -1);
     render();
@@ -194,6 +203,7 @@ function render() {
   const monthRecords = getMonthRecords(state.records, state.currentMonth);
   const selectedRecords = getRecordsByDate(state.records, state.selectedDate);
 
+  renderTabs();
   elements.monthLabel.textContent = formatMonthLabel(state.currentMonth);
   elements.selectedDateLabel.textContent = formatSelectedDate(state.selectedDate);
 
@@ -203,6 +213,25 @@ function render() {
   renderRecordList(selectedRecords);
   renderStats(monthRecords);
   renderFormState();
+}
+
+function setActiveTab(tabName) {
+  state.activeTab = tabName;
+  renderTabs();
+}
+
+function renderTabs() {
+  elements.tabButtons.forEach((button) => {
+    const isActive = button.dataset.tab === state.activeTab;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  elements.tabPanels.forEach((panel) => {
+    const isActive = panel.dataset.tabPanel === state.activeTab;
+    panel.classList.toggle("is-active", isActive);
+    panel.hidden = !isActive;
+  });
 }
 
 function renderHero(monthRecords) {
