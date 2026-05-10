@@ -227,6 +227,7 @@ const state = {
   currentMonth: getMonthStart(new Date()),
   selectedDate: formatDateKey(new Date()),
   editingRecordId: null,
+  reviewingRecordId: null,
   activeTab: "home",
   draftGoalBlocks: [],
   showAllMoveStats: false,
@@ -254,21 +255,24 @@ const elements = {
   goal: document.getElementById("goal"),
   goalMoveName: document.getElementById("goalMoveName"),
   goalTargetCount: document.getElementById("goalTargetCount"),
-  goalCompletedCount: document.getElementById("goalCompletedCount"),
   addGoalBlockButton: document.getElementById("addGoalBlockButton"),
   goalBlockList: document.getElementById("goalBlockList"),
-  recentMoveChips: document.getElementById("recentMoveChips"),
-  quickTemplateChips: document.getElementById("quickTemplateChips"),
+  savedMoveChips: document.getElementById("savedMoveChips"),
   formErrorMessage: document.getElementById("formErrorMessage"),
-  practiceNotes: document.getElementById("practiceNotes"),
-  reflection: document.getElementById("reflection"),
-  nextTask: document.getElementById("nextTask"),
   location: document.getElementById("location"),
-  conditionScore: document.getElementById("conditionScore"),
-  satisfactionScore: document.getElementById("satisfactionScore"),
-  conditionValue: document.getElementById("conditionValue"),
-  satisfactionValue: document.getElementById("satisfactionValue"),
   goalCompleted: document.getElementById("goalCompleted"),
+  reviewForm: document.getElementById("reviewForm"),
+  reviewRecordId: document.getElementById("reviewRecordId"),
+  reviewGoalChecklist: document.getElementById("reviewGoalChecklist"),
+  reviewPracticeNotes: document.getElementById("reviewPracticeNotes"),
+  reviewReflection: document.getElementById("reviewReflection"),
+  reviewNextTask: document.getElementById("reviewNextTask"),
+  reviewConditionScore: document.getElementById("reviewConditionScore"),
+  reviewSatisfactionScore: document.getElementById("reviewSatisfactionScore"),
+  reviewConditionValue: document.getElementById("reviewConditionValue"),
+  reviewSatisfactionValue: document.getElementById("reviewSatisfactionValue"),
+  reviewErrorMessage: document.getElementById("reviewErrorMessage"),
+  cancelReviewButton: document.getElementById("cancelReviewButton"),
   prevMonthButton: document.getElementById("prevMonthButton"),
   nextMonthButton: document.getElementById("nextMonthButton"),
   todayButton: document.getElementById("todayButton"),
@@ -314,6 +318,7 @@ function bindEvents() {
   elements.newRecordButton.addEventListener("click", () => {
     state.editingRecordId = null;
     resetForm({ preserveDate: true });
+    resetReviewForm();
     focusForm();
   });
 
@@ -325,14 +330,6 @@ function bindEvents() {
   elements.recordForm.addEventListener("submit", (event) => {
     event.preventDefault();
     upsertRecord();
-  });
-
-  elements.conditionScore.addEventListener("input", () => {
-    elements.conditionValue.textContent = elements.conditionScore.value;
-  });
-
-  elements.satisfactionScore.addEventListener("input", () => {
-    elements.satisfactionValue.textContent = elements.satisfactionScore.value;
   });
 
   elements.addGoalBlockButton.addEventListener("click", addGoalBlock);
@@ -349,6 +346,21 @@ function bindEvents() {
       toggleMoveStatsView();
     }
   });
+
+  elements.reviewForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitReview();
+  });
+
+  elements.reviewConditionScore.addEventListener("input", () => {
+    elements.reviewConditionValue.textContent = elements.reviewConditionScore.value;
+  });
+
+  elements.reviewSatisfactionScore.addEventListener("input", () => {
+    elements.reviewSatisfactionValue.textContent = elements.reviewSatisfactionScore.value;
+  });
+
+  elements.cancelReviewButton.addEventListener("click", resetReviewForm);
 }
 
 function render() {
@@ -366,8 +378,7 @@ function render() {
   renderRecordList(selectedRecords);
   renderStats(monthRecords);
   renderGoalBlockEditor();
-  renderRecentMoveChips();
-  renderQuickTemplates();
+  renderSavedMoveChips();
   renderFormState();
 }
 
@@ -886,7 +897,7 @@ function getAvatarFieldLabel(key) {
 
 function renderHero(monthRecords) {
   const totalMinutes = monthRecords.reduce((sum, record) => sum + record.durationMinutes, 0);
-  const completedCount = monthRecords.filter((record) => record.goalCompleted).length;
+  const reviewedCount = monthRecords.filter((record) => record.reviewStatus === "reviewed").length;
   const activeDays = new Set(monthRecords.map((record) => record.practiceDate)).size;
 
   elements.heroSummary.innerHTML = `
@@ -905,8 +916,8 @@ function renderHero(monthRecords) {
         <strong>${monthRecords.length}개</strong>
       </div>
       <div class="hero-metric">
-        <span>목표 달성</span>
-        <strong>${completedCount}회</strong>
+        <span>회고 완료</span>
+        <strong>${reviewedCount}회</strong>
       </div>
     </div>
   `;
@@ -938,8 +949,9 @@ function renderCalendarDay(day) {
   const records = getRecordsByDate(state.records, dateKey);
   const totalMinutes = records.reduce((sum, record) => sum + record.durationMinutes, 0);
   const completedMoves = getTotalCompletedCount(records);
-  const moveVolumeLevel = getMoveVolumeLevel(completedMoves);
-  const dayGoalsCompleted = isDayGoalsCompleted(records);
+  const dayReviewStatus = getDayReviewStatus(records);
+  const dayGoalCheckRate = getDayGoalCheckRate(records);
+  const reviewLevel = getReviewLevel(dayGoalCheckRate);
   const intensityLevel = getIntensityLevel(totalMinutes);
   const isSelected = dateKey === state.selectedDate;
   const isToday = dateKey === formatDateKey(new Date());
@@ -948,15 +960,15 @@ function renderCalendarDay(day) {
     day.isCurrentMonth ? "" : "is-outside",
     isSelected ? "is-selected" : "",
     isToday ? "is-today" : "",
-    moveVolumeLevel ? `move-level-${moveVolumeLevel}` : "",
-    dayGoalsCompleted ? "is-goals-complete" : "",
+    reviewLevel ? `review-level-${reviewLevel}` : "",
+    dayReviewStatus === "reviewed" ? "is-goals-complete" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
   return `
     <button class="${dayClasses}" type="button" data-date="${dateKey}">
-      ${dayGoalsCompleted ? '<span class="complete-badge"></span>' : ""}
+      ${dayReviewStatus ? `<span class="status-dot is-${dayReviewStatus}"></span>` : ""}
       <span class="calendar-day-number">${day.date.getDate()}</span>
       ${completedMoves ? `<span class="calendar-move-badge">${completedMoves}회</span>` : ""}
       <div class="calendar-day-meta">
@@ -978,7 +990,7 @@ function renderDailySummary(records) {
   }
 
   const totalMinutes = records.reduce((sum, record) => sum + record.durationMinutes, 0);
-  const completedCount = records.filter((record) => record.goalCompleted).length;
+  const reviewedCount = records.filter((record) => record.reviewStatus === "reviewed").length;
   const completedMoves = getTotalCompletedCount(records);
   const avgCondition = average(records.map((record) => record.conditionScore));
   const avgSatisfaction = average(records.map((record) => record.satisfactionScore));
@@ -1006,7 +1018,7 @@ function renderDailySummary(records) {
         <strong>${completedMoves}회</strong>
       </div>
     </div>
-    <p class="stat-subtext">목표 달성 기록 ${completedCount}회 포함</p>
+    <p class="stat-subtext">회고 완료 기록 ${reviewedCount}회 포함</p>
   `;
 }
 
@@ -1038,23 +1050,29 @@ function renderRecordList(records) {
       deleteRecord(button.dataset.id);
     });
   });
+
+  elements.recordList.querySelectorAll("[data-action='review']").forEach((button) => {
+    button.addEventListener("click", () => {
+      startReview(button.dataset.id);
+    });
+  });
 }
 
 function renderRecordCard(record) {
   const goalBlocks = getGoalBlocksFromRecord(record);
   const completedMoves = getTotalCompletedCount([record]);
+  const isReviewed = record.reviewStatus === "reviewed";
   return `
     <article class="record-card">
       <div class="record-topline">
         <strong>${PRACTICE_TYPE_LABELS[record.practiceType]} 연습</strong>
-        <span class="record-meta">${formatMinutes(record.durationMinutes)} · 동작 수행 ${completedMoves}회 · ${record.goalCompleted ? "목표 달성" : "진행 중"}</span>
+        <span class="record-meta">${formatMinutes(record.durationMinutes)} · 동작 수행 ${completedMoves}회</span>
       </div>
 
       <div class="tag-row">
-        <span class="tag is-accent">${GENRE_LABELS[record.genre]}</span>
+        <span class="review-status-badge is-${record.reviewStatus}">${isReviewed ? "회고 완료" : "목표 등록"}</span>
         ${record.location ? `<span class="tag location-tag">장소: ${escapeHtml(record.location)}</span>` : ""}
-        <span class="tag">컨디션 ${record.conditionScore}/5</span>
-        <span class="tag">만족도 ${record.satisfactionScore}/5</span>
+        ${isReviewed ? `<span class="tag">컨디션 ${record.conditionScore}/5</span><span class="tag">만족도 ${record.satisfactionScore}/5</span>` : ""}
       </div>
 
       <div class="detail-block">
@@ -1062,24 +1080,31 @@ function renderRecordCard(record) {
         ${renderRecordGoalBlocks(goalBlocks, record.goal)}
       </div>
 
-      <div class="detail-block">
-        <h4>실제 연습 내용</h4>
-        <p>${escapeHtml(record.practiceNotes || "기록 없음")}</p>
-      </div>
+      ${
+        isReviewed
+          ? `
+            <div class="detail-block">
+              <h4>연습한 내용</h4>
+              <p>${escapeHtml(record.practiceNotes || "기록 없음")}</p>
+            </div>
 
-      <div class="detail-block">
-        <h4>느낀 점</h4>
-        <p>${escapeHtml(record.reflection || "기록 없음")}</p>
-      </div>
+            <div class="detail-block">
+              <h4>느낀 점</h4>
+              <p>${escapeHtml(record.reflection || "기록 없음")}</p>
+            </div>
 
-      <div class="detail-block">
-        <h4>다음 연습 과제</h4>
-        <p>${escapeHtml(record.nextTask || "기록 없음")}</p>
-      </div>
+            <div class="detail-block">
+              <h4>다음 연습 과제</h4>
+              <p>${escapeHtml(record.nextTask || "기록 없음")}</p>
+            </div>
+          `
+          : ""
+      }
 
       <div class="record-actions">
         <span class="record-meta">업데이트 ${formatRelativeDateTime(record.updatedAt)}</span>
         <div class="month-actions">
+          <button class="accent-button" type="button" data-action="review" data-id="${record.id}">${isReviewed ? "회고 수정" : "회고하기"}</button>
           <button class="ghost-button" type="button" data-action="edit" data-id="${record.id}">수정</button>
           <button class="ghost-button" type="button" data-action="delete" data-id="${record.id}">삭제</button>
         </div>
@@ -1094,33 +1119,33 @@ function renderStats(monthRecords) {
   const practiceTypeTotals = aggregateBy(monthRecords, "practiceType", "durationMinutes");
   const trendRows = buildSevenDayTrend(state.records, state.selectedDate);
   const moveStats = aggregateMoveStats(monthRecords);
-  const totalMoveTargets = moveStats.reduce((sum, move) => sum + move.targetCount, 0);
-  const totalMoveCompleted = moveStats.reduce((sum, move) => sum + move.completedCount, 0);
+  const reviewStats = getReviewStats(monthRecords);
 
   elements.statsGrid.innerHTML = `
     ${renderDashboardInsights(monthRecords)}
 
     <article class="stat-card">
-      <h3>이번 달 총 연습 횟수</h3>
-      <div class="stat-value">${monthRecords.length}회</div>
+      <h3>이번 달 목표 등록 수</h3>
+      <div class="stat-value">${reviewStats.plannedCount}개</div>
       <p class="stat-subtext">기록이 있는 날짜 수 ${new Set(monthRecords.map((record) => record.practiceDate)).size}일</p>
+    </article>
+
+    <article class="stat-card">
+      <h3>회고 완료 수</h3>
+      <div class="stat-value">${reviewStats.reviewedCount}개</div>
+      <p class="stat-subtext">목표 등록 후 회고까지 마친 기록입니다.</p>
+    </article>
+
+    <article class="stat-card">
+      <h3>목표 체크 완료율</h3>
+      <div class="stat-value">${reviewStats.checkRate}%</div>
+      <p class="stat-subtext">${reviewStats.completedBlocks} / ${reviewStats.totalBlocks}개 동작 체크 완료</p>
     </article>
 
     <article class="stat-card">
       <h3>이번 달 총 연습 시간</h3>
       <div class="stat-value">${formatMinutes(totalMinutes)}</div>
       <p class="stat-subtext">1회 평균 ${monthRecords.length ? formatMinutes(Math.round(totalMinutes / monthRecords.length)) : "0분"}</p>
-    </article>
-
-    <article class="stat-card">
-      <h3>장르별 연습 비중</h3>
-      ${renderMiniBars(
-        Object.entries(genreTotals).map(([genre, minutes]) => ({
-          label: GENRE_LABELS[genre],
-          value: minutes,
-          display: formatMinutes(minutes),
-        })),
-      )}
     </article>
 
     <article class="stat-card">
@@ -1146,9 +1171,9 @@ function renderStats(monthRecords) {
     </article>
 
     <article class="stat-card">
-      <h3>이번 달 목표 동작 수</h3>
+      <h3>등록한 목표 동작 수</h3>
       <div class="stat-value">${moveStats.length}개</div>
-      <p class="stat-subtext">실제 수행 횟수 ${totalMoveCompleted}회 / 목표 ${totalMoveTargets}회</p>
+      <p class="stat-subtext">가장 많이 등록한 동작: ${getMostPlannedMove(monthRecords)?.moveName || "없음"}</p>
     </article>
 
     <article class="stat-card">
@@ -1208,19 +1233,15 @@ function renderGoalBlockEditor() {
 
   elements.goalBlockList.innerHTML = state.draftGoalBlocks
     .map((block) => {
-      const completion = calculateGoalBlockCompletion(block);
       return `
         <article class="goal-block-card">
           <div class="goal-block-main">
             <strong>${escapeHtml(block.moveName)}</strong>
-            <span>${block.completedCount} / ${block.targetCount}회</span>
+            <span>목표 ${block.targetCount}회</span>
           </div>
           <div class="goal-block-meta">
-            <span>${completion}%</span>
+            <span>연습 후 회고에서 체크</span>
             <button class="goal-remove-button" type="button" data-action="remove-goal-block" data-id="${block.id}">삭제</button>
-          </div>
-          <div class="goal-progress">
-            <div class="goal-progress-fill" style="width: ${Math.min(completion, 100)}%"></div>
           </div>
         </article>
       `;
@@ -1240,7 +1261,6 @@ function renderGoalBlockEditor() {
 function addGoalBlock() {
   const moveName = elements.goalMoveName.value.trim();
   const targetCount = Math.max(Number(elements.goalTargetCount.value) || 1, 1);
-  const completedCount = Math.max(Number(elements.goalCompletedCount.value) || 0, 0);
 
   if (!moveName) {
     elements.goalMoveName.focus();
@@ -1252,31 +1272,17 @@ function addGoalBlock() {
       id: createScopedId("goal"),
       moveName,
       targetCount,
-      completedCount,
+      completedCount: 0,
+      completed: false,
     }),
   );
 
   clearFormError();
   elements.goalMoveName.value = "";
   elements.goalTargetCount.value = "10";
-  elements.goalCompletedCount.value = "0";
   renderGoalBlockEditor();
-  renderRecentMoveChips();
+  renderSavedMoveChips();
   elements.goalMoveName.focus();
-}
-
-function addGoalBlockFromRecent(moveName) {
-  const recentMove = getRecentMoves().find((move) => move.moveName === moveName);
-  state.draftGoalBlocks.push(
-    normalizeGoalBlock({
-      id: createScopedId("goal"),
-      moveName,
-      targetCount: recentMove?.targetCount || 10,
-      completedCount: 0,
-    }),
-  );
-  clearFormError();
-  renderGoalBlockEditor();
 }
 
 function removeGoalBlock(goalBlockId) {
@@ -1284,135 +1290,43 @@ function removeGoalBlock(goalBlockId) {
   renderGoalBlockEditor();
 }
 
-function getRecentMoves(limit = 8) {
+function getSavedMoves(limit = 12) {
   const moves = new Map();
-  [...state.records]
-    .sort((a, b) => b.practiceDate.localeCompare(a.practiceDate) || b.createdAt.localeCompare(a.createdAt))
-    .forEach((record) => {
-      getGoalBlocksFromRecord(record).forEach((block) => {
-        if (!moves.has(block.moveName)) {
-          moves.set(block.moveName, {
-            moveName: block.moveName,
-            targetCount: block.targetCount || 10,
-          });
-        }
-      });
+  state.records.forEach((record) => {
+    getGoalBlocksFromRecord(record).forEach((block) => {
+      const current = moves.get(block.moveName) || { moveName: block.moveName, count: 0 };
+      current.count += 1;
+      moves.set(block.moveName, current);
     });
+  });
 
-  return [...moves.values()].slice(0, limit);
+  return [...moves.values()].sort((a, b) => b.count - a.count || a.moveName.localeCompare(b.moveName, "ko")).slice(0, limit);
 }
 
-function renderRecentMoveChips() {
-  const recentMoves = getRecentMoves();
-  if (!recentMoves.length) {
-    elements.recentMoveChips.innerHTML = `<span class="stat-subtext">최근 사용한 동작이 없습니다.</span>`;
+function renderSavedMoveChips() {
+  const savedMoves = getSavedMoves();
+  if (!savedMoves.length) {
+    elements.savedMoveChips.innerHTML = `<span class="stat-subtext">아직 등록한 동작이 없습니다.</span>`;
     return;
   }
 
-  elements.recentMoveChips.innerHTML = recentMoves
+  elements.savedMoveChips.innerHTML = savedMoves
     .map(
       (move) =>
-        `<button class="move-chip" type="button" data-move-name="${escapeHtml(move.moveName)}">${escapeHtml(move.moveName)}</button>`,
+        `<button class="saved-move-chip" type="button" data-move-name="${escapeHtml(move.moveName)}">${escapeHtml(move.moveName)}</button>`,
     )
     .join("");
 
-  elements.recentMoveChips.querySelectorAll("[data-move-name]").forEach((button) => {
+  elements.savedMoveChips.querySelectorAll("[data-move-name]").forEach((button) => {
     button.addEventListener("click", () => {
-      addGoalBlockFromRecent(button.dataset.moveName);
+      fillMoveNameFromSavedMove(button.dataset.moveName);
     });
   });
 }
 
-function getQuickTemplates() {
-  return [
-    {
-      id: "solo-basic",
-      label: "개인 기본기",
-      practiceType: "solo",
-      durationMinutes: 60,
-      goalBlocks: [
-        { moveName: "탑락", targetCount: 20, completedCount: 0 },
-        { moveName: "풋워크", targetCount: 20, completedCount: 0 },
-        { moveName: "프리즈", targetCount: 10, completedCount: 0 },
-      ],
-    },
-    {
-      id: "routine-run",
-      label: "루틴 런스루",
-      durationMinutes: 90,
-      goalBlocks: [
-        { moveName: "루틴 런스루", targetCount: 5, completedCount: 0 },
-        { moveName: "문제 구간 반복", targetCount: 10, completedCount: 0 },
-      ],
-    },
-    {
-      id: "team-sync",
-      label: "팀 합 맞추기",
-      practiceType: "team",
-      durationMinutes: 120,
-      goalBlocks: [
-        { moveName: "전체 런스루", targetCount: 3, completedCount: 0 },
-        { moveName: "동선 정리", targetCount: 10, completedCount: 0 },
-        { moveName: "카운트 맞추기", targetCount: 10, completedCount: 0 },
-      ],
-    },
-    {
-      id: "freestyle",
-      label: "프리스타일",
-      durationMinutes: 60,
-      goalBlocks: [
-        { moveName: "프리스타일 라운드", targetCount: 5, completedCount: 0 },
-        { moveName: "음악 해석", targetCount: 5, completedCount: 0 },
-      ],
-    },
-  ];
-}
-
-function renderQuickTemplates() {
-  elements.quickTemplateChips.innerHTML = getQuickTemplates()
-    .map((template) => `<button class="quick-template-chip" type="button" data-template-id="${template.id}">${template.label}</button>`)
-    .join("");
-
-  elements.quickTemplateChips.querySelectorAll("[data-template-id]").forEach((button) => {
-    button.addEventListener("click", () => {
-      applyQuickTemplate(button.dataset.templateId);
-    });
-  });
-}
-
-function applyQuickTemplate(templateId) {
-  const template = getQuickTemplates().find((item) => item.id === templateId);
-  if (!template) {
-    return;
-  }
-
-  state.draftGoalBlocks = mergeGoalBlocks(state.draftGoalBlocks, template.goalBlocks);
-  if (template.practiceType) {
-    elements.practiceType.value = template.practiceType;
-  }
-  if (template.durationMinutes) {
-    elements.durationMinutes.value = String(template.durationMinutes);
-  }
-  if (state.profile?.mainGenre) {
-    elements.genre.value = state.profile.mainGenre;
-  }
-  clearFormError();
-  renderGoalBlockEditor();
-}
-
-function mergeGoalBlocks(existingBlocks, incomingBlocks) {
-  const blockMap = new Map();
-  [...existingBlocks, ...incomingBlocks].forEach((block) => {
-    const normalized = normalizeGoalBlock({ id: createScopedId("goal"), ...block });
-    const current = blockMap.get(normalized.moveName);
-    if (!current) {
-      blockMap.set(normalized.moveName, normalized);
-      return;
-    }
-    current.targetCount += normalized.targetCount;
-    current.completedCount += normalized.completedCount;
-  });
-  return [...blockMap.values()];
+function fillMoveNameFromSavedMove(moveName) {
+  elements.goalMoveName.value = moveName;
+  elements.goalMoveName.focus();
 }
 
 function renderRecordGoalBlocks(goalBlocks, fallbackGoal) {
@@ -1424,21 +1338,16 @@ function renderRecordGoalBlocks(goalBlocks, fallbackGoal) {
     <div class="goal-block-list is-compact">
       ${goalBlocks
         .map((block) => {
-          const completion = calculateGoalBlockCompletion(block);
-          const statusClass = completion >= 100 ? "is-complete" : completion < 50 ? "needs-work" : "";
-          const statusLabel = completion >= 100 ? "완료" : completion < 50 ? "보완" : "진행";
+          const statusClass = block.completed ? "is-complete" : "needs-work";
+          const statusLabel = block.completed ? "완료" : "미완료";
           return `
             <div class="goal-block-card ${statusClass}">
               <div class="goal-block-main">
                 <strong>${escapeHtml(block.moveName)}</strong>
-                <span>${block.completedCount} / ${block.targetCount}회</span>
+                <span>${block.targetCount}회</span>
               </div>
               <div class="goal-block-meta">
-                <span>${completion}%</span>
                 <span class="goal-status-badge ${statusClass}">${statusLabel}</span>
-              </div>
-              <div class="goal-progress">
-                <div class="goal-progress-fill" style="width: ${Math.min(completion, 100)}%"></div>
               </div>
             </div>
           `;
@@ -1478,7 +1387,8 @@ function renderMoveStats(records, options = {}) {
 }
 
 function renderDashboardInsights(monthRecords) {
-  const topMove = getTopMove(monthRecords);
+  const plannedMove = getMostPlannedMove(monthRecords);
+  const completedMove = getMostCompletedMove(monthRecords);
   const goalSummary = getMonthlyGoalSummary(monthRecords);
   const conditionInsight = getConditionSatisfactionInsight(monthRecords);
   const balanceInsight = getPracticeBalanceInsight(monthRecords);
@@ -1487,35 +1397,35 @@ function renderDashboardInsights(monthRecords) {
     <section class="dashboard-insight-grid">
       <article class="insight-card">
         <p class="section-kicker">Focus Move</p>
-        <h3>이번 달 핵심 동작</h3>
-        <div class="insight-value">${topMove ? escapeHtml(topMove.moveName) : "아직 없음"}</div>
+        <h3>가장 많이 등록한 동작</h3>
+        <div class="insight-value">${plannedMove ? escapeHtml(plannedMove.moveName) : "아직 없음"}</div>
         <p class="insight-comment">
-          ${topMove ? `이번 달은 ${escapeHtml(topMove.moveName)} 중심으로 연습했어요. 총 ${topMove.completedCount}회 수행 / 목표 ${topMove.targetCount}회 / 달성률 ${topMove.completionRate}%` : "이번 달 기록을 추가하면 집중 동작이 표시됩니다."}
+          ${plannedMove ? `${escapeHtml(plannedMove.moveName)} 목표를 ${plannedMove.recordCount}회 등록했어요.` : "목표를 등록하면 가장 자주 계획한 동작이 표시됩니다."}
         </p>
       </article>
 
       <article class="insight-card">
         <p class="section-kicker">Goal Rate</p>
-        <h3>목표 달성률</h3>
+        <h3>목표 체크 완료율</h3>
         <div class="insight-value">${goalSummary.completionRate}%</div>
-        <p class="insight-comment">${goalSummary.completedCount} / ${goalSummary.targetCount}회 수행</p>
+        <p class="insight-comment">${goalSummary.completedCount} / ${goalSummary.targetCount}개 목표 체크 완료</p>
         <div class="goal-progress">
           <div class="goal-progress-fill" style="width: ${Math.min(goalSummary.completionRate, 100)}%"></div>
         </div>
       </article>
 
       <article class="insight-card">
-        <p class="section-kicker">Body Check</p>
-        <h3>컨디션-만족도</h3>
-        <div class="insight-value">${conditionInsight.avgCondition.toFixed(1)} / ${conditionInsight.avgSatisfaction.toFixed(1)}</div>
-        <p class="insight-comment">${conditionInsight.comment}</p>
+        <p class="section-kicker">Completed Move</p>
+        <h3>가장 자주 완료한 동작</h3>
+        <div class="insight-value">${completedMove ? escapeHtml(completedMove.moveName) : "아직 없음"}</div>
+        <p class="insight-comment">${completedMove ? `${completedMove.completedCount}회 수행으로 체크된 동작입니다.` : "회고에서 목표를 체크하면 완료 동작이 표시됩니다."}</p>
       </article>
 
       <article class="insight-card">
-        <p class="section-kicker">Balance</p>
-        <h3>연습 균형</h3>
-        <div class="insight-value">${balanceInsight.primaryLabel}</div>
-        <p class="insight-comment">${balanceInsight.comment}</p>
+        <p class="section-kicker">Review Mood</p>
+        <h3>회고 컨디션</h3>
+        <div class="insight-value">${conditionInsight.avgCondition.toFixed(1)} / ${conditionInsight.avgSatisfaction.toFixed(1)}</div>
+        <p class="insight-comment">${conditionInsight.comment} ${balanceInsight.comment}</p>
       </article>
     </section>
   `;
@@ -1532,15 +1442,9 @@ function validateRecordForm() {
   }
 
   const durationMinutes = Number(elements.durationMinutes.value);
-  const conditionScore = Number(elements.conditionScore.value);
-  const satisfactionScore = Number(elements.satisfactionScore.value);
 
   if (Number.isNaN(durationMinutes) || durationMinutes < 0) {
     renderFormError("연습 시간은 0 이상이어야 합니다.");
-    return false;
-  }
-  if (conditionScore < 1 || conditionScore > 5 || satisfactionScore < 1 || satisfactionScore > 5) {
-    renderFormError("컨디션과 만족도 점수는 1~5 범위여야 합니다.");
     return false;
   }
   return true;
@@ -1556,8 +1460,18 @@ function clearFormError() {
   elements.formErrorMessage.hidden = true;
 }
 
+function renderReviewError(message) {
+  elements.reviewErrorMessage.textContent = message;
+  elements.reviewErrorMessage.hidden = false;
+}
+
+function clearReviewError() {
+  elements.reviewErrorMessage.textContent = "";
+  elements.reviewErrorMessage.hidden = true;
+}
+
 function renderFormState() {
-  elements.formTitle.textContent = state.editingRecordId ? "기록 수정" : "새 연습 기록";
+  elements.formTitle.textContent = state.editingRecordId ? "목표 수정" : "오늘의 목표 등록";
 }
 
 function upsertRecord() {
@@ -1573,17 +1487,18 @@ function upsertRecord() {
     teamId: state.profile?.teamId || null,
     practiceDate: elements.practiceDate.value,
     practiceType: elements.practiceType.value,
-    genre: elements.genre.value,
+    genre: state.profile?.mainGenre || existingRecord?.genre || elements.genre?.value || "other",
     durationMinutes: Number(elements.durationMinutes.value),
     goal: summarizeGoalBlocks(goalBlocks),
     goalBlocks,
-    practiceNotes: elements.practiceNotes.value.trim(),
-    reflection: elements.reflection.value.trim(),
-    nextTask: elements.nextTask.value.trim(),
-    conditionScore: Number(elements.conditionScore.value),
-    satisfactionScore: Number(elements.satisfactionScore.value),
+    practiceNotes: existingRecord?.practiceNotes || "",
+    reflection: existingRecord?.reflection || "",
+    nextTask: existingRecord?.nextTask || "",
+    conditionScore: existingRecord?.conditionScore || 3,
+    satisfactionScore: existingRecord?.satisfactionScore || 3,
     location: elements.location.value.trim(),
-    goalCompleted: isGoalBlocksCompleted(goalBlocks),
+    reviewStatus: existingRecord?.reviewStatus || "planned",
+    goalCompleted: existingRecord?.reviewStatus === "reviewed" ? isGoalBlocksCompleted(goalBlocks) : false,
     createdAt: existingRecord ? existingRecord.createdAt : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -1610,31 +1525,119 @@ function deleteRecord(recordId) {
     state.editingRecordId = null;
     resetForm({ preserveDate: true });
   }
+  if (state.reviewingRecordId === recordId) {
+    resetReviewForm();
+  }
 
   persistRecords();
   render();
+}
+
+function startReview(recordId) {
+  const record = getRecordById(recordId);
+  if (!record) {
+    return;
+  }
+
+  state.reviewingRecordId = record.id;
+  renderReviewForm(record);
+  elements.reviewForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderReviewForm(record) {
+  elements.reviewForm.hidden = false;
+  elements.reviewRecordId.value = record.id;
+  elements.reviewGoalChecklist.innerHTML = getGoalBlocksFromRecord(record)
+    .map(
+      (block) => `
+        <label class="review-check-item">
+          <input type="checkbox" data-goal-id="${block.id}" ${block.completed ? "checked" : ""} />
+          <span>${escapeHtml(block.moveName)} ${block.targetCount}회</span>
+        </label>
+      `,
+    )
+    .join("");
+
+  elements.reviewPracticeNotes.value = record.reviewStatus === "reviewed" ? record.practiceNotes || "" : "";
+  elements.reviewReflection.value = record.reviewStatus === "reviewed" ? record.reflection || "" : "";
+  elements.reviewNextTask.value = record.reviewStatus === "reviewed" ? record.nextTask || "" : "";
+  elements.reviewConditionScore.value = String(record.conditionScore || 3);
+  elements.reviewSatisfactionScore.value = String(record.satisfactionScore || 3);
+  elements.reviewConditionValue.textContent = String(record.conditionScore || 3);
+  elements.reviewSatisfactionValue.textContent = String(record.satisfactionScore || 3);
+  clearReviewError();
+}
+
+function submitReview() {
+  const record = getRecordById(elements.reviewRecordId.value);
+  if (!record) {
+    renderReviewError("회고할 기록을 찾을 수 없습니다.");
+    return;
+  }
+
+  const checkedIds = new Set(
+    [...elements.reviewGoalChecklist.querySelectorAll("[data-goal-id]")]
+      .filter((input) => input.checked)
+      .map((input) => input.dataset.goalId),
+  );
+  const goalBlocks = getGoalBlocksFromRecord(record).map((block) => {
+    const completed = checkedIds.has(block.id);
+    return {
+      ...block,
+      completed,
+      completedCount: completed ? block.targetCount : 0,
+    };
+  });
+
+  const updatedRecord = {
+    ...record,
+    goalBlocks,
+    goal: summarizeGoalBlocks(goalBlocks),
+    practiceNotes: elements.reviewPracticeNotes.value.trim(),
+    reflection: elements.reviewReflection.value.trim(),
+    nextTask: elements.reviewNextTask.value.trim(),
+    conditionScore: Number(elements.reviewConditionScore.value),
+    satisfactionScore: Number(elements.reviewSatisfactionScore.value),
+    reviewStatus: "reviewed",
+    goalCompleted: goalBlocks.length ? goalBlocks.every((block) => block.completed) : false,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const recordIndex = state.records.findIndex((item) => item.id === record.id);
+  if (recordIndex >= 0) {
+    state.records.splice(recordIndex, 1, updatedRecord);
+  }
+  persistRecords();
+  resetReviewForm();
+  render();
+}
+
+function resetReviewForm() {
+  state.reviewingRecordId = null;
+  elements.reviewForm.reset();
+  elements.reviewForm.hidden = true;
+  elements.reviewRecordId.value = "";
+  elements.reviewGoalChecklist.innerHTML = "";
+  elements.reviewConditionScore.value = "3";
+  elements.reviewSatisfactionScore.value = "3";
+  elements.reviewConditionValue.textContent = "3";
+  elements.reviewSatisfactionValue.textContent = "3";
+  clearReviewError();
 }
 
 function populateForm(record) {
   elements.recordId.value = record.id;
   elements.practiceDate.value = record.practiceDate;
   elements.practiceType.value = record.practiceType;
-  elements.genre.value = record.genre;
+  elements.genre.value = record.genre || state.profile?.mainGenre || "other";
   elements.durationMinutes.value = String(record.durationMinutes);
   elements.goal.value = record.goal;
   state.draftGoalBlocks = getGoalBlocksFromRecord(record);
-  elements.practiceNotes.value = record.practiceNotes;
-  elements.reflection.value = record.reflection;
-  elements.nextTask.value = record.nextTask;
   elements.location.value = record.location || "";
-  elements.conditionScore.value = String(record.conditionScore);
-  elements.satisfactionScore.value = String(record.satisfactionScore);
   elements.goalCompleted.checked = record.goalCompleted;
-  elements.conditionValue.textContent = String(record.conditionScore);
-  elements.satisfactionValue.textContent = String(record.satisfactionScore);
   clearFormError();
   renderGoalBlockEditor();
-  renderRecentMoveChips();
+  renderSavedMoveChips();
 }
 
 function resetForm(options = {}) {
@@ -1646,17 +1649,12 @@ function resetForm(options = {}) {
   setFormDate(dateValue);
   elements.durationMinutes.value = "60";
   elements.goalTargetCount.value = "10";
-  elements.goalCompletedCount.value = "0";
   elements.location.value = "";
-  elements.conditionScore.value = "3";
-  elements.satisfactionScore.value = "3";
-  elements.conditionValue.textContent = "3";
-  elements.satisfactionValue.textContent = "3";
+  elements.genre.value = state.profile?.mainGenre || "other";
   elements.goalCompleted.checked = false;
   clearFormError();
   renderGoalBlockEditor();
-  renderRecentMoveChips();
-  renderQuickTemplates();
+  renderSavedMoveChips();
   renderFormState();
 }
 
@@ -1716,6 +1714,8 @@ function persistTeams() {
 function migrateLegacyRecords(records) {
   return records.map((record) => {
     const now = new Date().toISOString();
+    const reviewStatus =
+      record.reviewStatus || (record.practiceNotes || record.reflection || record.nextTask ? "reviewed" : "planned");
     const goalBlocks = Array.isArray(record.goalBlocks) && record.goalBlocks.length
       ? record.goalBlocks.map(normalizeGoalBlock)
       : record.goal
@@ -1744,6 +1744,7 @@ function migrateLegacyRecords(records) {
       conditionScore: Number(record.conditionScore) || 3,
       satisfactionScore: Number(record.satisfactionScore) || 3,
       location: record.location || "",
+      reviewStatus,
       goalCompleted:
         typeof record.goalCompleted === "boolean" ? record.goalCompleted : isGoalBlocksCompleted(goalBlocks),
       createdAt: record.createdAt || now,
@@ -1753,11 +1754,16 @@ function migrateLegacyRecords(records) {
 }
 
 function normalizeGoalBlock(block) {
+  const targetCount = Math.max(Number(block?.targetCount) || 1, 1);
+  const completed = typeof block?.completed === "boolean"
+    ? block.completed
+    : Math.max(Number(block?.completedCount) || 0, 0) >= targetCount;
   return {
     id: block?.id || createScopedId("goal"),
     moveName: String(block?.moveName || "이름 없는 동작").trim() || "이름 없는 동작",
-    targetCount: Math.max(Number(block?.targetCount) || 1, 1),
-    completedCount: Math.max(Number(block?.completedCount) || 0, 0),
+    targetCount,
+    completedCount: completed ? targetCount : Math.max(Number(block?.completedCount) || 0, 0),
+    completed,
   };
 }
 
@@ -1786,12 +1792,12 @@ function summarizeGoalBlocks(goalBlocks) {
   }
 
   return goalBlocks
-    .map((block) => `${block.moveName} ${block.completedCount}/${block.targetCount}회`)
+    .map((block) => `${block.moveName} ${block.targetCount}회`)
     .join(", ");
 }
 
 function isGoalBlocksCompleted(goalBlocks) {
-  return Boolean(goalBlocks.length) && goalBlocks.every((block) => block.completedCount >= block.targetCount);
+  return Boolean(goalBlocks.length) && goalBlocks.every((block) => block.completed);
 }
 
 function calculateGoalBlockCompletion(goalBlock) {
@@ -1804,7 +1810,7 @@ function calculateGoalBlockCompletion(goalBlock) {
 function getTotalCompletedCount(records) {
   return records.reduce(
     (sum, record) =>
-      sum + getGoalBlocksFromRecord(record).reduce((blockSum, block) => blockSum + block.completedCount, 0),
+      sum + getGoalBlocksFromRecord(record).reduce((blockSum, block) => blockSum + (block.completed ? block.targetCount : 0), 0),
     0,
   );
 }
@@ -1838,9 +1844,9 @@ function aggregateMoveStats(records) {
 }
 
 function getMonthlyGoalSummary(monthRecords) {
-  const moveStats = aggregateMoveStats(monthRecords);
-  const targetCount = moveStats.reduce((sum, move) => sum + move.targetCount, 0);
-  const completedCount = moveStats.reduce((sum, move) => sum + move.completedCount, 0);
+  const blocks = monthRecords.flatMap(getGoalBlocksFromRecord);
+  const targetCount = blocks.length;
+  const completedCount = blocks.filter((block) => block.completed).length;
   return {
     targetCount,
     completedCount,
@@ -1849,6 +1855,28 @@ function getMonthlyGoalSummary(monthRecords) {
 }
 
 function getTopMove(monthRecords) {
+  return getMostCompletedMove(monthRecords) || getMostPlannedMove(monthRecords);
+}
+
+function getReviewStats(monthRecords) {
+  const plannedCount = monthRecords.length;
+  const reviewedCount = monthRecords.filter((record) => record.reviewStatus === "reviewed").length;
+  const blocks = monthRecords.flatMap(getGoalBlocksFromRecord);
+  const completedBlocks = blocks.filter((block) => block.completed).length;
+  return {
+    plannedCount,
+    reviewedCount,
+    totalBlocks: blocks.length,
+    completedBlocks,
+    checkRate: blocks.length ? Math.round((completedBlocks / blocks.length) * 100) : 0,
+  };
+}
+
+function getMostPlannedMove(monthRecords) {
+  return aggregateMoveStats(monthRecords).sort((a, b) => b.recordCount - a.recordCount)[0] || null;
+}
+
+function getMostCompletedMove(monthRecords) {
   return aggregateMoveStats(monthRecords).sort((a, b) => b.completedCount - a.completedCount)[0] || null;
 }
 
@@ -1899,21 +1927,32 @@ function toggleMoveStatsView() {
   render();
 }
 
-function getMoveVolumeLevel(completedMoves) {
-  if (completedMoves >= 51) {
+function getReviewLevel(checkRate) {
+  if (checkRate >= 80) {
     return 3;
   }
-  if (completedMoves >= 21) {
+  if (checkRate >= 40) {
     return 2;
   }
-  if (completedMoves >= 1) {
+  if (checkRate > 0) {
     return 1;
   }
   return 0;
 }
 
-function isDayGoalsCompleted(records) {
-  return Boolean(records.length) && records.every((record) => isGoalBlocksCompleted(getGoalBlocksFromRecord(record)));
+function getDayReviewStatus(records) {
+  if (!records.length) {
+    return "";
+  }
+  return records.some((record) => record.reviewStatus === "reviewed") ? "reviewed" : "planned";
+}
+
+function getDayGoalCheckRate(records) {
+  const blocks = records.flatMap(getGoalBlocksFromRecord);
+  if (!blocks.length) {
+    return 0;
+  }
+  return Math.round((blocks.filter((block) => block.completed).length / blocks.length) * 100);
 }
 
 function loadRecords() {
