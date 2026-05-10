@@ -12,6 +12,8 @@ const GENRE_LABELS = {
   waacking: "왁킹",
   house: "하우스",
   krump: "크럼프",
+  voguing: "보깅",
+  kpop: "Kpop",
   other: "기타",
 };
 const PRACTICE_TYPE_LABELS = {
