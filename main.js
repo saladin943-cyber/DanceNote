@@ -294,7 +294,10 @@ const state = {
   editingRecordId: null,
   reviewingRecordId: null,
   activeTab: "home",
-  draftGoalBlocks: [],
+  calendarModalMode: null,
+  modalDate: null,
+  modalRecordId: null,
+  modalDraftGoalBlocks: [],
   showAllMoveStats: false,
 };
 
@@ -310,34 +313,11 @@ const elements = {
   dailySummary: document.getElementById("dailySummary"),
   recordList: document.getElementById("recordList"),
   statsGrid: document.getElementById("statsGrid"),
-  formTitle: document.getElementById("formTitle"),
-  recordForm: document.getElementById("recordForm"),
-  recordId: document.getElementById("recordId"),
-  practiceDate: document.getElementById("practiceDate"),
-  practiceType: document.getElementById("practiceType"),
-  genre: document.getElementById("genre"),
-  durationMinutes: document.getElementById("durationMinutes"),
-  goal: document.getElementById("goal"),
-  goalMoveName: document.getElementById("goalMoveName"),
-  goalTargetCount: document.getElementById("goalTargetCount"),
-  addGoalBlockButton: document.getElementById("addGoalBlockButton"),
-  goalBlockList: document.getElementById("goalBlockList"),
-  savedMoveChips: document.getElementById("savedMoveChips"),
-  formErrorMessage: document.getElementById("formErrorMessage"),
-  location: document.getElementById("location"),
-  goalCompleted: document.getElementById("goalCompleted"),
-  reviewForm: document.getElementById("reviewForm"),
-  reviewRecordId: document.getElementById("reviewRecordId"),
-  reviewGoalChecklist: document.getElementById("reviewGoalChecklist"),
-  reviewPracticeNotes: document.getElementById("reviewPracticeNotes"),
-  reviewReflection: document.getElementById("reviewReflection"),
-  reviewNextTask: document.getElementById("reviewNextTask"),
-  reviewConditionScore: document.getElementById("reviewConditionScore"),
-  reviewSatisfactionScore: document.getElementById("reviewSatisfactionScore"),
-  reviewConditionValue: document.getElementById("reviewConditionValue"),
-  reviewSatisfactionValue: document.getElementById("reviewSatisfactionValue"),
-  reviewErrorMessage: document.getElementById("reviewErrorMessage"),
-  cancelReviewButton: document.getElementById("cancelReviewButton"),
+  calendarModal: document.getElementById("calendarModal"),
+  calendarModalTitle: document.getElementById("calendarModalTitle"),
+  calendarModalKicker: document.getElementById("calendarModalKicker"),
+  calendarModalBody: document.getElementById("calendarModalBody"),
+  celebrationOverlay: document.getElementById("celebrationOverlay"),
   prevMonthButton: document.getElementById("prevMonthButton"),
   nextMonthButton: document.getElementById("nextMonthButton"),
   todayButton: document.getElementById("todayButton"),
@@ -350,7 +330,6 @@ init();
 function init() {
   renderWeekdays();
   bindEvents();
-  setFormDate(state.selectedDate);
   render();
 }
 
@@ -376,34 +355,11 @@ function bindEvents() {
     state.currentMonth = getMonthStart(today);
     state.selectedDate = formatDateKey(today);
     state.editingRecordId = null;
-    setFormDate(state.selectedDate);
     render();
   });
 
   elements.newRecordButton.addEventListener("click", () => {
-    state.editingRecordId = null;
-    resetForm({ preserveDate: true });
-    resetReviewForm();
-    focusForm();
-  });
-
-  elements.resetFormButton.addEventListener("click", () => {
-    state.editingRecordId = null;
-    resetForm({ preserveDate: true });
-  });
-
-  elements.recordForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    upsertRecord();
-  });
-
-  elements.addGoalBlockButton.addEventListener("click", addGoalBlock);
-
-  elements.goalMoveName.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      addGoalBlock();
-    }
+    openCalendarModalForDate(state.selectedDate);
   });
 
   elements.statsGrid.addEventListener("click", (event) => {
@@ -412,20 +368,12 @@ function bindEvents() {
     }
   });
 
-  elements.reviewForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    submitReview();
+  elements.calendarModal.addEventListener("click", handleCalendarModalClick);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.calendarModal.hidden) {
+      closeCalendarModal();
+    }
   });
-
-  elements.reviewConditionScore.addEventListener("input", () => {
-    elements.reviewConditionValue.textContent = elements.reviewConditionScore.value;
-  });
-
-  elements.reviewSatisfactionScore.addEventListener("input", () => {
-    elements.reviewSatisfactionValue.textContent = elements.reviewSatisfactionScore.value;
-  });
-
-  elements.cancelReviewButton.addEventListener("click", resetReviewForm);
 }
 
 function render() {
@@ -442,9 +390,6 @@ function render() {
   renderDailySummary(selectedRecords);
   renderRecordList(selectedRecords);
   renderStats(monthRecords);
-  renderGoalBlockEditor();
-  renderSavedMoveChips();
-  renderFormState();
 }
 
 function setActiveTab(tabName) {
@@ -1253,9 +1198,8 @@ function renderCalendar() {
     button.addEventListener("click", () => {
       state.selectedDate = button.dataset.date;
       state.editingRecordId = null;
-      setFormDate(state.selectedDate);
       render();
-      focusForm();
+      openCalendarModalForDate(button.dataset.date);
     });
   });
 }
@@ -1353,11 +1297,15 @@ function renderRecordList(records) {
       if (!record) {
         return;
       }
-
-      state.editingRecordId = record.id;
-      populateForm(record);
-      renderFormState();
-      focusForm();
+      if (record.reviewStatus === "reviewed") {
+        state.modalRecordId = record.id;
+        state.calendarModalMode = "view";
+        renderViewModal(record, getRecordsByDate(state.records, record.practiceDate));
+        showCalendarModal();
+      } else {
+        switchModalToPlanEdit(record.id);
+        showCalendarModal();
+      }
     });
   });
 
@@ -1370,6 +1318,20 @@ function renderRecordList(records) {
   elements.recordList.querySelectorAll("[data-action='review']").forEach((button) => {
     button.addEventListener("click", () => {
       startReview(button.dataset.id);
+    });
+  });
+
+  elements.recordList.querySelectorAll("[data-action='view']").forEach((button) => {
+    button.addEventListener("click", () => {
+      const record = getRecordById(button.dataset.id);
+      if (!record) {
+        return;
+      }
+      state.modalDate = record.practiceDate;
+      state.modalRecordId = record.id;
+      state.calendarModalMode = "view";
+      renderViewModal(record, getRecordsByDate(state.records, record.practiceDate));
+      showCalendarModal();
     });
   });
 }
@@ -1394,6 +1356,7 @@ function renderRecordCard(record) {
       <div class="detail-block">
         <h4>오늘의 목표</h4>
         ${renderRecordGoalBlocks(goalBlocks, record.goal)}
+        ${record.freeGoalText ? `<p class="stat-subtext">자유 목표: ${escapeHtml(record.freeGoalText)}</p>` : ""}
       </div>
 
       ${
@@ -1420,8 +1383,8 @@ function renderRecordCard(record) {
       <div class="record-actions">
         <span class="record-meta">업데이트 ${formatRelativeDateTime(record.updatedAt)}</span>
         <div class="month-actions">
-          <button class="accent-button" type="button" data-action="review" data-id="${record.id}">${isReviewed ? "회고 수정" : "회고하기"}</button>
-          <button class="ghost-button" type="button" data-action="edit" data-id="${record.id}">수정</button>
+          <button class="accent-button" type="button" data-action="${isReviewed ? "view" : "review"}" data-id="${record.id}">${isReviewed ? "기록 보기" : "회고하기"}</button>
+          <button class="ghost-button" type="button" data-action="edit" data-id="${record.id}">${isReviewed ? "수정" : "목표 수정"}</button>
           <button class="ghost-button" type="button" data-action="delete" data-id="${record.id}">삭제</button>
         </div>
       </div>
@@ -1539,73 +1502,6 @@ function renderMiniBars(items) {
   `;
 }
 
-function renderGoalBlockEditor() {
-  if (!state.draftGoalBlocks.length) {
-    elements.goalBlockList.innerHTML = `<div class="empty-state">아직 추가된 목표 블록이 없습니다.</div>`;
-    elements.goal.value = "";
-    elements.goalCompleted.checked = false;
-    return;
-  }
-
-  elements.goalBlockList.innerHTML = state.draftGoalBlocks
-    .map((block) => {
-      return `
-        <article class="goal-block-card">
-          <div class="goal-block-main">
-            <strong>${escapeHtml(block.moveName)}</strong>
-            <span>목표 ${block.targetCount}회</span>
-          </div>
-          <div class="goal-block-meta">
-            <span>연습 후 회고에서 체크</span>
-            <button class="goal-remove-button" type="button" data-action="remove-goal-block" data-id="${block.id}">삭제</button>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
-
-  elements.goal.value = summarizeGoalBlocks(state.draftGoalBlocks);
-  elements.goalCompleted.checked = isGoalBlocksCompleted(state.draftGoalBlocks);
-
-  elements.goalBlockList.querySelectorAll("[data-action='remove-goal-block']").forEach((button) => {
-    button.addEventListener("click", () => {
-      removeGoalBlock(button.dataset.id);
-    });
-  });
-}
-
-function addGoalBlock() {
-  const moveName = elements.goalMoveName.value.trim();
-  const targetCount = Math.max(Number(elements.goalTargetCount.value) || 1, 1);
-
-  if (!moveName) {
-    elements.goalMoveName.focus();
-    return;
-  }
-
-  state.draftGoalBlocks.push(
-    normalizeGoalBlock({
-      id: createScopedId("goal"),
-      moveName,
-      targetCount,
-      completedCount: 0,
-      completed: false,
-    }),
-  );
-
-  clearFormError();
-  elements.goalMoveName.value = "";
-  elements.goalTargetCount.value = "10";
-  renderGoalBlockEditor();
-  renderSavedMoveChips();
-  elements.goalMoveName.focus();
-}
-
-function removeGoalBlock(goalBlockId) {
-  state.draftGoalBlocks = state.draftGoalBlocks.filter((block) => block.id !== goalBlockId);
-  renderGoalBlockEditor();
-}
-
 function getSavedMoves(limit = 12) {
   const moves = new Map();
   state.records.forEach((record) => {
@@ -1617,32 +1513,6 @@ function getSavedMoves(limit = 12) {
   });
 
   return [...moves.values()].sort((a, b) => b.count - a.count || a.moveName.localeCompare(b.moveName, "ko")).slice(0, limit);
-}
-
-function renderSavedMoveChips() {
-  const savedMoves = getSavedMoves();
-  if (!savedMoves.length) {
-    elements.savedMoveChips.innerHTML = `<span class="stat-subtext">아직 등록한 동작이 없습니다.</span>`;
-    return;
-  }
-
-  elements.savedMoveChips.innerHTML = savedMoves
-    .map(
-      (move) =>
-        `<button class="saved-move-chip" type="button" data-move-name="${escapeHtml(move.moveName)}">${escapeHtml(move.moveName)}</button>`,
-    )
-    .join("");
-
-  elements.savedMoveChips.querySelectorAll("[data-move-name]").forEach((button) => {
-    button.addEventListener("click", () => {
-      fillMoveNameFromSavedMove(button.dataset.moveName);
-    });
-  });
-}
-
-function fillMoveNameFromSavedMove(moveName) {
-  elements.goalMoveName.value = moveName;
-  elements.goalMoveName.focus();
 }
 
 function renderRecordGoalBlocks(goalBlocks, fallbackGoal) {
@@ -1747,102 +1617,512 @@ function renderDashboardInsights(monthRecords) {
   `;
 }
 
-function validateRecordForm() {
-  if (!elements.practiceDate.value) {
-    renderFormError("연습 날짜를 선택해주세요.");
-    return false;
-  }
-  if (!state.draftGoalBlocks.length) {
-    renderFormError("오늘의 목표를 최소 1개 이상 추가해주세요.");
-    return false;
+function getDateRecordStatus(dateKey) {
+  const records = getRecordsByDate(state.records, dateKey);
+
+  if (!records.length) {
+    return {
+      status: "empty",
+      records: [],
+      primaryRecord: null,
+    };
   }
 
-  const durationMinutes = Number(elements.durationMinutes.value);
+  // MVP는 날짜당 대표 기록 1개 중심으로 처리한다. 추후 여러 기록 선택 UI를 이 지점에 확장할 수 있다.
+  const plannedRecord = records.find((record) => record.reviewStatus !== "reviewed");
+  if (plannedRecord) {
+    return {
+      status: "planned",
+      records,
+      primaryRecord: plannedRecord,
+    };
+  }
 
+  return {
+    status: "reviewed",
+    records,
+    primaryRecord: records[0],
+  };
+}
+
+function openCalendarModalForDate(dateKey) {
+  const result = getDateRecordStatus(dateKey);
+  state.modalDate = dateKey;
+  state.modalRecordId = result.primaryRecord?.id || null;
+
+  if (result.status === "empty") {
+    state.calendarModalMode = "plan";
+    state.modalDraftGoalBlocks = [];
+    renderPlanModal(dateKey);
+  } else if (result.status === "planned") {
+    state.calendarModalMode = "review";
+    state.modalDraftGoalBlocks = getGoalBlocksFromRecord(result.primaryRecord);
+    renderReviewModal(result.primaryRecord);
+  } else {
+    state.calendarModalMode = "view";
+    renderViewModal(result.primaryRecord, result.records);
+  }
+
+  showCalendarModal();
+}
+
+function showCalendarModal() {
+  elements.calendarModal.hidden = false;
+  document.body.classList.add("modal-open");
+}
+
+function closeCalendarModal() {
+  elements.calendarModal.hidden = true;
+  elements.calendarModalBody.innerHTML = "";
+  state.calendarModalMode = null;
+  state.modalDate = null;
+  state.modalRecordId = null;
+  state.modalDraftGoalBlocks = [];
+  document.body.classList.remove("modal-open");
+  render();
+}
+
+function showCelebration(message = "축하드려요. 오늘도 한걸음 성장하셨네요!") {
+  if (!elements.celebrationOverlay) {
+    return;
+  }
+
+  elements.celebrationOverlay.hidden = false;
+  elements.celebrationOverlay.classList.remove("is-active");
+  void elements.celebrationOverlay.offsetWidth;
+  elements.celebrationOverlay.classList.add("is-active");
+
+  const strongNode = elements.celebrationOverlay.querySelector("strong");
+  const messageNode = elements.celebrationOverlay.querySelector("p");
+  if (strongNode) {
+    strongNode.textContent = "축하드려요.";
+  }
+  if (messageNode) {
+    messageNode.textContent = message.replace("축하드려요. ", "");
+  }
+
+  window.setTimeout(() => {
+    elements.celebrationOverlay.classList.remove("is-active");
+    elements.celebrationOverlay.hidden = true;
+  }, 2200);
+}
+
+function handleCalendarModalClick(event) {
+  const actionTarget = event.target.closest("[data-action]");
+  if (!actionTarget) {
+    return;
+  }
+
+  const { action, id } = actionTarget.dataset;
+  if (action === "close-calendar-modal") {
+    closeCalendarModal();
+  } else if (action === "add-modal-goal-block") {
+    addModalGoalBlock();
+  } else if (action === "remove-modal-goal-block") {
+    removeModalGoalBlock(id);
+  } else if (action === "fill-modal-move") {
+    fillModalMoveName(actionTarget.dataset.moveName);
+  } else if (action === "submit-plan-modal") {
+    submitPlanFromModal();
+  } else if (action === "submit-review-modal") {
+    submitReviewFromModal();
+  } else if (action === "edit-plan-modal") {
+    switchModalToPlanEdit(id);
+  } else if (action === "edit-review-modal") {
+    switchModalToReviewEdit(id);
+  } else if (action === "delete-modal-record") {
+    deleteRecord(id);
+    closeCalendarModal();
+  }
+}
+
+function renderPlanModal(dateKey, record = null) {
+  state.modalRecordId = record?.id || null;
+  state.modalDraftGoalBlocks = record ? getGoalBlocksFromRecord(record) : state.modalDraftGoalBlocks;
+  elements.calendarModalKicker.textContent = state.calendarModalMode === "edit-plan" ? "Edit Plan" : "Plan";
+  elements.calendarModalTitle.textContent = state.calendarModalMode === "edit-plan" ? "오늘의 목표 수정" : "오늘의 목표 등록";
+  elements.calendarModalBody.innerHTML = `
+    <form class="modal-form" id="modalPlanForm">
+      <div class="form-error-message" id="modalFormError" hidden></div>
+      <p class="form-section-description">연습 전에 오늘 할 동작과 자유 목표를 가볍게 적어보세요.</p>
+      <div class="compact-form-grid">
+        <label class="field">
+          <span>연습 날짜</span>
+          <input id="modalPracticeDate" type="date" required value="${escapeHtml(record?.practiceDate || dateKey)}" />
+        </label>
+        <label class="field">
+          <span>연습 유형</span>
+          <select id="modalPracticeType">
+            <option value="solo" ${record?.practiceType === "solo" ? "selected" : ""}>개인</option>
+            <option value="team" ${record?.practiceType === "team" ? "selected" : ""}>팀</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>연습 시간</span>
+          <input id="modalDurationMinutes" type="number" min="0" step="10" value="${Number(record?.durationMinutes ?? 60)}" />
+        </label>
+        <label class="field">
+          <span>장소</span>
+          <input id="modalLocation" type="text" placeholder="예: 연습실, 집, 팀 스튜디오" value="${escapeHtml(record?.location || "")}" />
+        </label>
+      </div>
+      <div class="modal-goal-builder">
+        <div class="goal-builder-grid">
+          <label class="field">
+            <span>동작명</span>
+            <input id="modalGoalMoveName" type="text" placeholder="예: 윈드밀, 프리즈, 탑락" />
+          </label>
+          <label class="field">
+            <span>목표 횟수</span>
+            <input id="modalGoalTargetCount" type="number" min="1" value="10" />
+          </label>
+        </div>
+        <button class="ghost-button" type="button" data-action="add-modal-goal-block">목표 추가</button>
+        <div>
+          <p class="section-kicker">나의 등록 동작</p>
+          <div class="saved-move-chips" id="modalSavedMoveChips"></div>
+        </div>
+        <div class="modal-goal-list" id="modalGoalBlockList"></div>
+      </div>
+      <label class="field">
+        <span>자유 목표 메모</span>
+        <textarea id="modalFreeGoalText" rows="3" placeholder="연습할 목표를 자유롭게 메모해보세요">${escapeHtml(record?.freeGoalText || "")}</textarea>
+      </label>
+      <div class="modal-action-row">
+        <button class="ghost-button" type="button" data-action="close-calendar-modal">닫기</button>
+        <button class="accent-button" type="button" data-action="submit-plan-modal">목표 저장</button>
+      </div>
+    </form>
+  `;
+  renderModalGoalBlockEditor();
+  renderModalSavedMoveChips();
+  document.getElementById("modalGoalMoveName")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addModalGoalBlock();
+    }
+  });
+}
+
+function validatePlanModal() {
+  const errorNode = document.getElementById("modalFormError");
+  const dateValue = document.getElementById("modalPracticeDate")?.value;
+  const freeGoalText = document.getElementById("modalFreeGoalText")?.value.trim() || "";
+  const durationMinutes = Number(document.getElementById("modalDurationMinutes")?.value || 0);
+
+  const renderError = (message) => {
+    errorNode.textContent = message;
+    errorNode.hidden = false;
+    return false;
+  };
+
+  if (!dateValue) {
+    return renderError("연습 날짜를 선택해주세요.");
+  }
+  if (!state.modalDraftGoalBlocks.length && !freeGoalText) {
+    return renderError("목표 동작을 추가하거나 자유 목표를 입력해주세요.");
+  }
   if (Number.isNaN(durationMinutes) || durationMinutes < 0) {
-    renderFormError("연습 시간은 0 이상이어야 합니다.");
-    return false;
+    return renderError("연습 시간은 0 이상이어야 합니다.");
   }
+
+  errorNode.textContent = "";
+  errorNode.hidden = true;
   return true;
 }
 
-function renderFormError(message) {
-  elements.formErrorMessage.textContent = message;
-  elements.formErrorMessage.hidden = false;
-}
-
-function clearFormError() {
-  elements.formErrorMessage.textContent = "";
-  elements.formErrorMessage.hidden = true;
-}
-
-function renderReviewError(message) {
-  elements.reviewErrorMessage.textContent = message;
-  elements.reviewErrorMessage.hidden = false;
-}
-
-function clearReviewError() {
-  elements.reviewErrorMessage.textContent = "";
-  elements.reviewErrorMessage.hidden = true;
-}
-
-function renderFormState() {
-  elements.formTitle.textContent = state.editingRecordId ? "목표 수정" : "오늘의 목표 등록";
-}
-
-function upsertRecord() {
-  if (!validateRecordForm()) {
+function submitPlanFromModal() {
+  if (!validatePlanModal()) {
     return;
   }
-  clearFormError();
-  const goalBlocks = state.draftGoalBlocks.map(normalizeGoalBlock);
-  const existingRecord = elements.recordId.value ? getRecordById(elements.recordId.value) : null;
+
+  const existingRecord = state.modalRecordId ? getRecordById(state.modalRecordId) : null;
+  const goalBlocks = state.modalDraftGoalBlocks.map(normalizeGoalBlock);
+  const freeGoalText = document.getElementById("modalFreeGoalText").value.trim();
+  const goal = summarizeGoalText(goalBlocks, freeGoalText);
   const record = {
-    id: elements.recordId.value || createId(),
-    profileId: state.profile?.id || null,
-    teamId: state.profile?.teamId || null,
-    practiceDate: elements.practiceDate.value,
-    practiceType: elements.practiceType.value,
-    genre: state.profile?.mainGenre || existingRecord?.genre || elements.genre?.value || "other",
-    durationMinutes: Number(elements.durationMinutes.value),
-    goal: summarizeGoalBlocks(goalBlocks),
+    id: existingRecord?.id || createId(),
+    profileId: state.profile?.id || existingRecord?.profileId || null,
+    teamId: state.profile?.teamId || existingRecord?.teamId || null,
+    practiceDate: document.getElementById("modalPracticeDate").value,
+    practiceType: document.getElementById("modalPracticeType").value,
+    genre: state.profile?.mainGenre || existingRecord?.genre || "other",
+    durationMinutes: Number(document.getElementById("modalDurationMinutes").value) || 0,
+    goal,
     goalBlocks,
+    freeGoalText,
     practiceNotes: existingRecord?.practiceNotes || "",
     reflection: existingRecord?.reflection || "",
     nextTask: existingRecord?.nextTask || "",
     conditionScore: existingRecord?.conditionScore || 3,
     satisfactionScore: existingRecord?.satisfactionScore || 3,
-    location: elements.location.value.trim(),
+    location: document.getElementById("modalLocation").value.trim(),
     reviewStatus: existingRecord?.reviewStatus || "planned",
     goalCompleted: existingRecord?.reviewStatus === "reviewed" ? isGoalBlocksCompleted(goalBlocks) : false,
-    createdAt: existingRecord ? existingRecord.createdAt : new Date().toISOString(),
+    createdAt: existingRecord?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
+  upsertRecordObject(record);
+  closeCalendarModal();
+}
+
+function renderModalGoalBlockEditor() {
+  const list = document.getElementById("modalGoalBlockList");
+  if (!list) {
+    return;
+  }
+  if (!state.modalDraftGoalBlocks.length) {
+    list.innerHTML = `<div class="empty-state">추가된 목표 동작이 없습니다.</div>`;
+    return;
+  }
+  list.innerHTML = state.modalDraftGoalBlocks
+    .map(
+      (block) => `
+        <article class="goal-block-card">
+          <div class="goal-block-main">
+            <strong>${escapeHtml(block.moveName)}</strong>
+            <span>목표 ${block.targetCount}회</span>
+          </div>
+          <div class="goal-block-meta">
+            <span>회고에서 완료 체크</span>
+            <button class="goal-remove-button" type="button" data-action="remove-modal-goal-block" data-id="${block.id}">삭제</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function addModalGoalBlock() {
+  const moveNameInput = document.getElementById("modalGoalMoveName");
+  const targetCountInput = document.getElementById("modalGoalTargetCount");
+  const moveName = moveNameInput.value.trim();
+  if (!moveName) {
+    moveNameInput.focus();
+    return;
+  }
+  state.modalDraftGoalBlocks.push(
+    normalizeGoalBlock({
+      id: createScopedId("goal"),
+      moveName,
+      targetCount: Math.max(Number(targetCountInput.value) || 1, 1),
+      completedCount: 0,
+      completed: false,
+    }),
+  );
+  moveNameInput.value = "";
+  targetCountInput.value = "10";
+  renderModalGoalBlockEditor();
+}
+
+function removeModalGoalBlock(goalBlockId) {
+  state.modalDraftGoalBlocks = state.modalDraftGoalBlocks.filter((block) => block.id !== goalBlockId);
+  renderModalGoalBlockEditor();
+}
+
+function renderModalSavedMoveChips() {
+  const container = document.getElementById("modalSavedMoveChips");
+  if (!container) {
+    return;
+  }
+  const savedMoves = getSavedMoves();
+  if (!savedMoves.length) {
+    container.innerHTML = `<span class="stat-subtext">아직 등록한 동작이 없습니다.</span>`;
+    return;
+  }
+  container.innerHTML = savedMoves
+    .map((move) => `<button class="saved-move-chip" type="button" data-action="fill-modal-move" data-move-name="${escapeHtml(move.moveName)}">${escapeHtml(move.moveName)}</button>`)
+    .join("");
+}
+
+function fillModalMoveName(moveName) {
+  const input = document.getElementById("modalGoalMoveName");
+  input.value = moveName;
+  input.focus();
+}
+
+function renderReviewModal(record) {
+  state.modalRecordId = record.id;
+  elements.calendarModalKicker.textContent = state.calendarModalMode === "edit-review" ? "Edit Review" : "Review";
+  elements.calendarModalTitle.textContent = "연습 회고";
+  elements.calendarModalBody.innerHTML = `
+    <form class="modal-form">
+      <div class="form-error-message" id="modalReviewError" hidden></div>
+      <p class="form-section-description">연습 전에 세운 목표를 실제로 했는지 체크하고 짧게 회고해보세요.</p>
+      <div class="modal-summary-block">
+        <strong>${formatSelectedDate(record.practiceDate)}</strong>
+        <span>${record.location ? `장소: ${escapeHtml(record.location)}` : "장소 미입력"}</span>
+        ${record.freeGoalText ? `<p>자유 목표: ${escapeHtml(record.freeGoalText)}</p>` : ""}
+      </div>
+      <div class="modal-review-checklist" id="modalReviewChecklist">
+        ${renderModalReviewChecklist(record)}
+      </div>
+      <label class="field">
+        <span>연습한 내용</span>
+        <textarea id="modalReviewPracticeNotes" rows="3" placeholder="체크만 해도 저장할 수 있어요.">${escapeHtml(record.reviewStatus === "reviewed" ? record.practiceNotes || "" : "")}</textarea>
+      </label>
+      <label class="field">
+        <span>느낀 점</span>
+        <textarea id="modalReviewReflection" rows="2">${escapeHtml(record.reviewStatus === "reviewed" ? record.reflection || "" : "")}</textarea>
+      </label>
+      <label class="field">
+        <span>다음 연습 과제</span>
+        <textarea id="modalReviewNextTask" rows="2">${escapeHtml(record.reviewStatus === "reviewed" ? record.nextTask || "" : "")}</textarea>
+      </label>
+      <div class="field-row">
+        <label class="field">
+          <span>컨디션 점수</span>
+          <input id="modalReviewConditionScore" type="range" min="1" max="5" value="${record.conditionScore || 3}" />
+          <strong class="range-value" id="modalReviewConditionValue">${record.conditionScore || 3}</strong>
+        </label>
+        <label class="field">
+          <span>만족도 점수</span>
+          <input id="modalReviewSatisfactionScore" type="range" min="1" max="5" value="${record.satisfactionScore || 3}" />
+          <strong class="range-value" id="modalReviewSatisfactionValue">${record.satisfactionScore || 3}</strong>
+        </label>
+      </div>
+      <div class="modal-action-row">
+        <button class="ghost-button" type="button" data-action="close-calendar-modal">닫기</button>
+        <button class="accent-button" type="button" data-action="submit-review-modal">회고 저장</button>
+      </div>
+    </form>
+  `;
+  document.getElementById("modalReviewConditionScore").addEventListener("input", (event) => {
+    document.getElementById("modalReviewConditionValue").textContent = event.target.value;
+  });
+  document.getElementById("modalReviewSatisfactionScore").addEventListener("input", (event) => {
+    document.getElementById("modalReviewSatisfactionValue").textContent = event.target.value;
+  });
+}
+
+function renderModalReviewChecklist(record) {
+  const goalBlocks = getGoalBlocksFromRecord(record);
+  if (!goalBlocks.length) {
+    return `<div class="empty-state">체크할 목표 동작이 없습니다. 회고만 저장할 수 있습니다.</div>`;
+  }
+  return goalBlocks
+    .map(
+      (block) => `
+        <label class="review-check-item">
+          <input type="checkbox" data-goal-id="${block.id}" ${block.completed ? "checked" : ""} />
+          <span>${escapeHtml(block.moveName)} ${block.targetCount}회</span>
+        </label>
+      `,
+    )
+    .join("");
+}
+
+function submitReviewFromModal() {
+  const record = getRecordById(state.modalRecordId);
+  if (!record) {
+    return;
+  }
+  const checkedIds = new Set(
+    [...document.querySelectorAll("#modalReviewChecklist [data-goal-id]")]
+      .filter((input) => input.checked)
+      .map((input) => input.dataset.goalId),
+  );
+  const goalBlocks = getGoalBlocksFromRecord(record).map((block) => {
+    const completed = checkedIds.has(block.id);
+    return {
+      ...block,
+      completed,
+      completedCount: completed ? block.targetCount : 0,
+    };
+  });
+  const updatedRecord = {
+    ...record,
+    goalBlocks,
+    goal: summarizeGoalText(goalBlocks, record.freeGoalText || ""),
+    practiceNotes: document.getElementById("modalReviewPracticeNotes").value.trim(),
+    reflection: document.getElementById("modalReviewReflection").value.trim(),
+    nextTask: document.getElementById("modalReviewNextTask").value.trim(),
+    conditionScore: Number(document.getElementById("modalReviewConditionScore").value),
+    satisfactionScore: Number(document.getElementById("modalReviewSatisfactionScore").value),
+    reviewStatus: "reviewed",
+    goalCompleted: goalBlocks.length ? goalBlocks.every((block) => block.completed) : Boolean(record.freeGoalText),
+    updatedAt: new Date().toISOString(),
+  };
+  upsertRecordObject(updatedRecord);
+  closeCalendarModal();
+  showCelebration();
+}
+
+function renderViewModal(record, records = [record]) {
+  elements.calendarModalKicker.textContent = records.length > 1 ? `${records.length} Records` : "Record";
+  elements.calendarModalTitle.textContent = "연습 기록 확인";
+  elements.calendarModalBody.innerHTML = `
+    <div class="modal-form">
+      <div class="modal-summary-block">
+        <strong>${formatSelectedDate(record.practiceDate)}</strong>
+        <span>${PRACTICE_TYPE_LABELS[record.practiceType]} 연습 · ${formatMinutes(record.durationMinutes)}</span>
+        ${record.location ? `<span>장소: ${escapeHtml(record.location)}</span>` : ""}
+      </div>
+      ${record.freeGoalText ? `<div class="detail-block"><h4>자유 목표 메모</h4><p>${escapeHtml(record.freeGoalText)}</p></div>` : ""}
+      <div class="detail-block">
+        <h4>목표 동작</h4>
+        ${renderRecordGoalBlocks(getGoalBlocksFromRecord(record), record.goal)}
+      </div>
+      <div class="detail-block"><h4>연습한 내용</h4><p>${escapeHtml(record.practiceNotes || "기록 없음")}</p></div>
+      <div class="detail-block"><h4>느낀 점</h4><p>${escapeHtml(record.reflection || "기록 없음")}</p></div>
+      <div class="detail-block"><h4>다음 연습 과제</h4><p>${escapeHtml(record.nextTask || "기록 없음")}</p></div>
+      <div class="tag-row">
+        <span class="tag">컨디션 ${record.conditionScore}/5</span>
+        <span class="tag">만족도 ${record.satisfactionScore}/5</span>
+      </div>
+      <div class="modal-action-row">
+        <button class="ghost-button" type="button" data-action="edit-plan-modal" data-id="${record.id}">목표 수정</button>
+        <button class="ghost-button" type="button" data-action="edit-review-modal" data-id="${record.id}">회고 수정</button>
+        <button class="ghost-button" type="button" data-action="delete-modal-record" data-id="${record.id}">삭제</button>
+        <button class="accent-button" type="button" data-action="close-calendar-modal">닫기</button>
+      </div>
+    </div>
+  `;
+}
+
+function switchModalToPlanEdit(recordId) {
+  const record = getRecordById(recordId);
+  if (!record) {
+    return;
+  }
+  state.calendarModalMode = "edit-plan";
+  state.modalDate = record.practiceDate;
+  state.modalRecordId = record.id;
+  renderPlanModal(record.practiceDate, record);
+}
+
+function switchModalToReviewEdit(recordId) {
+  const record = getRecordById(recordId);
+  if (!record) {
+    return;
+  }
+  state.calendarModalMode = "edit-review";
+  state.modalDate = record.practiceDate;
+  state.modalRecordId = record.id;
+  renderReviewModal(record);
+}
+
+function upsertRecordObject(record) {
   const existingIndex = state.records.findIndex((item) => item.id === record.id);
   if (existingIndex >= 0) {
     state.records.splice(existingIndex, 1, record);
   } else {
     state.records.push(record);
   }
-
   state.records.sort((a, b) => a.practiceDate.localeCompare(b.practiceDate) || a.createdAt.localeCompare(b.createdAt));
   state.selectedDate = record.practiceDate;
   state.currentMonth = getMonthStart(parseDateKey(record.practiceDate));
-  state.editingRecordId = null;
   persistRecords();
-  resetForm({ preserveDate: true });
-  render();
 }
 
 function deleteRecord(recordId) {
   state.records = state.records.filter((record) => record.id !== recordId);
   if (state.editingRecordId === recordId) {
     state.editingRecordId = null;
-    resetForm({ preserveDate: true });
   }
   if (state.reviewingRecordId === recordId) {
-    resetReviewForm();
+    state.reviewingRecordId = null;
   }
 
   persistRecords();
@@ -1856,133 +2136,11 @@ function startReview(recordId) {
   }
 
   state.reviewingRecordId = record.id;
-  renderReviewForm(record);
-  elements.reviewForm.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function renderReviewForm(record) {
-  elements.reviewForm.hidden = false;
-  elements.reviewRecordId.value = record.id;
-  elements.reviewGoalChecklist.innerHTML = getGoalBlocksFromRecord(record)
-    .map(
-      (block) => `
-        <label class="review-check-item">
-          <input type="checkbox" data-goal-id="${block.id}" ${block.completed ? "checked" : ""} />
-          <span>${escapeHtml(block.moveName)} ${block.targetCount}회</span>
-        </label>
-      `,
-    )
-    .join("");
-
-  elements.reviewPracticeNotes.value = record.reviewStatus === "reviewed" ? record.practiceNotes || "" : "";
-  elements.reviewReflection.value = record.reviewStatus === "reviewed" ? record.reflection || "" : "";
-  elements.reviewNextTask.value = record.reviewStatus === "reviewed" ? record.nextTask || "" : "";
-  elements.reviewConditionScore.value = String(record.conditionScore || 3);
-  elements.reviewSatisfactionScore.value = String(record.satisfactionScore || 3);
-  elements.reviewConditionValue.textContent = String(record.conditionScore || 3);
-  elements.reviewSatisfactionValue.textContent = String(record.satisfactionScore || 3);
-  clearReviewError();
-}
-
-function submitReview() {
-  const record = getRecordById(elements.reviewRecordId.value);
-  if (!record) {
-    renderReviewError("회고할 기록을 찾을 수 없습니다.");
-    return;
-  }
-
-  const checkedIds = new Set(
-    [...elements.reviewGoalChecklist.querySelectorAll("[data-goal-id]")]
-      .filter((input) => input.checked)
-      .map((input) => input.dataset.goalId),
-  );
-  const goalBlocks = getGoalBlocksFromRecord(record).map((block) => {
-    const completed = checkedIds.has(block.id);
-    return {
-      ...block,
-      completed,
-      completedCount: completed ? block.targetCount : 0,
-    };
-  });
-
-  const updatedRecord = {
-    ...record,
-    goalBlocks,
-    goal: summarizeGoalBlocks(goalBlocks),
-    practiceNotes: elements.reviewPracticeNotes.value.trim(),
-    reflection: elements.reviewReflection.value.trim(),
-    nextTask: elements.reviewNextTask.value.trim(),
-    conditionScore: Number(elements.reviewConditionScore.value),
-    satisfactionScore: Number(elements.reviewSatisfactionScore.value),
-    reviewStatus: "reviewed",
-    goalCompleted: goalBlocks.length ? goalBlocks.every((block) => block.completed) : false,
-    updatedAt: new Date().toISOString(),
-  };
-
-  const recordIndex = state.records.findIndex((item) => item.id === record.id);
-  if (recordIndex >= 0) {
-    state.records.splice(recordIndex, 1, updatedRecord);
-  }
-  persistRecords();
-  resetReviewForm();
-  render();
-}
-
-function resetReviewForm() {
-  state.reviewingRecordId = null;
-  elements.reviewForm.reset();
-  elements.reviewForm.hidden = true;
-  elements.reviewRecordId.value = "";
-  elements.reviewGoalChecklist.innerHTML = "";
-  elements.reviewConditionScore.value = "3";
-  elements.reviewSatisfactionScore.value = "3";
-  elements.reviewConditionValue.textContent = "3";
-  elements.reviewSatisfactionValue.textContent = "3";
-  clearReviewError();
-}
-
-function populateForm(record) {
-  elements.recordId.value = record.id;
-  elements.practiceDate.value = record.practiceDate;
-  elements.practiceType.value = record.practiceType;
-  elements.genre.value = record.genre || state.profile?.mainGenre || "other";
-  elements.durationMinutes.value = String(record.durationMinutes);
-  elements.goal.value = record.goal;
-  state.draftGoalBlocks = getGoalBlocksFromRecord(record);
-  elements.location.value = record.location || "";
-  elements.goalCompleted.checked = record.goalCompleted;
-  clearFormError();
-  renderGoalBlockEditor();
-  renderSavedMoveChips();
-}
-
-function resetForm(options = {}) {
-  const preserveDate = options.preserveDate ?? false;
-  const dateValue = preserveDate ? state.selectedDate : formatDateKey(new Date());
-  elements.recordForm.reset();
-  elements.recordId.value = "";
-  state.draftGoalBlocks = [];
-  setFormDate(dateValue);
-  elements.durationMinutes.value = "60";
-  elements.goalTargetCount.value = "10";
-  elements.location.value = "";
-  elements.genre.value = state.profile?.mainGenre || "other";
-  elements.goalCompleted.checked = false;
-  clearFormError();
-  renderGoalBlockEditor();
-  renderSavedMoveChips();
-  renderFormState();
-}
-
-function setFormDate(dateKey) {
-  elements.practiceDate.value = dateKey;
-  if (!elements.durationMinutes.value) {
-    elements.durationMinutes.value = "60";
-  }
-}
-
-function focusForm() {
-  elements.goalMoveName.focus();
+  state.modalDate = record.practiceDate;
+  state.modalRecordId = record.id;
+  state.calendarModalMode = record.reviewStatus === "reviewed" ? "edit-review" : "review";
+  renderReviewModal(record);
+  showCalendarModal();
 }
 
 function loadProfile() {
@@ -2058,7 +2216,8 @@ function migrateLegacyRecords(records) {
       practiceType: record.practiceType || "solo",
       genre: record.genre || "other",
       durationMinutes: Number(record.durationMinutes) || 0,
-      goal: record.goal || summarizeGoalBlocks(goalBlocks),
+      freeGoalText: typeof record.freeGoalText === "string" ? record.freeGoalText : goalBlocks.length ? "" : record.goal || "",
+      goal: record.goal || summarizeGoalText(goalBlocks, typeof record.freeGoalText === "string" ? record.freeGoalText : goalBlocks.length ? "" : record.goal || ""),
       goalBlocks,
       practiceNotes: record.practiceNotes || "",
       reflection: record.reflection || "",
@@ -2116,6 +2275,18 @@ function summarizeGoalBlocks(goalBlocks) {
   return goalBlocks
     .map((block) => `${block.moveName} ${block.targetCount}회`)
     .join(", ");
+}
+
+function summarizeGoalText(goalBlocks, freeGoalText = "") {
+  const blockSummary = summarizeGoalBlocks(goalBlocks);
+  const cleanFreeGoalText = freeGoalText.trim();
+  if (blockSummary && cleanFreeGoalText) {
+    return `동작 목표: ${blockSummary} / 자유 목표: ${cleanFreeGoalText}`;
+  }
+  if (blockSummary) {
+    return blockSummary;
+  }
+  return cleanFreeGoalText;
 }
 
 function isGoalBlocksCompleted(goalBlocks) {
@@ -2266,7 +2437,7 @@ function getDayReviewStatus(records) {
   if (!records.length) {
     return "";
   }
-  return records.some((record) => record.reviewStatus === "reviewed") ? "reviewed" : "planned";
+  return records.some((record) => record.reviewStatus !== "reviewed") ? "planned" : "reviewed";
 }
 
 function getDayGoalCheckRate(records) {

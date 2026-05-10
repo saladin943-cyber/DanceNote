@@ -1704,6 +1704,249 @@ button {
   font-weight: 800;
 }
 
+.calendar-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.calendar-modal[hidden] {
+  display: none;
+}
+
+.calendar-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(8px);
+}
+
+.calendar-modal-dialog {
+  position: absolute;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: min(42rem, calc(100% - 1.5rem));
+  max-height: 85vh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: rgba(24, 24, 24, 0.96);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.calendar-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(24, 24, 24, 0.94);
+  backdrop-filter: blur(12px);
+}
+
+.calendar-modal-header h2 {
+  margin: 0;
+}
+
+.calendar-modal-body {
+  padding: 1rem;
+}
+
+.modal-close-button {
+  min-width: 4rem;
+}
+
+.modal-form,
+.modal-goal-builder,
+.modal-goal-list,
+.modal-review-checklist,
+.modal-summary-block {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.modal-goal-builder,
+.modal-summary-block {
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.modal-summary-block span,
+.modal-summary-block p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.modal-action-row {
+  position: sticky;
+  bottom: -1rem;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.9rem 0 0;
+  background: linear-gradient(180deg, rgba(24, 24, 24, 0), rgba(24, 24, 24, 0.98) 28%);
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.celebration-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  pointer-events: none;
+}
+
+.celebration-overlay[hidden] {
+  display: none;
+}
+
+.celebration-card {
+  position: relative;
+  overflow: hidden;
+  width: min(24rem, 100%);
+  padding: 1.4rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at top, rgba(255, 215, 168, 0.2), transparent 55%),
+    rgba(24, 24, 24, 0.94);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  transform: translateY(1rem) scale(0.94);
+  opacity: 0;
+}
+
+.celebration-overlay.is-active .celebration-card {
+  animation: celebration-pop 2200ms ease forwards;
+}
+
+.celebration-icon {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  margin: 0 auto 0.65rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 1.8rem;
+}
+
+.celebration-card strong {
+  position: relative;
+  z-index: 2;
+  display: block;
+  font-size: 1.2rem;
+}
+
+.celebration-card p {
+  position: relative;
+  z-index: 2;
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.celebration-burst,
+.celebration-burst::before,
+.celebration-burst::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    radial-gradient(circle, #ffd36f 0 0.22rem, transparent 0.24rem) 12% 30% / 5rem 5rem,
+    radial-gradient(circle, #ff7373 0 0.2rem, transparent 0.22rem) 80% 28% / 4.5rem 4.5rem,
+    radial-gradient(circle, #a7f0c1 0 0.18rem, transparent 0.2rem) 24% 78% / 4rem 4rem,
+    radial-gradient(circle, #b9d7ff 0 0.18rem, transparent 0.2rem) 72% 76% / 4rem 4rem;
+  opacity: 0;
+}
+
+.celebration-overlay.is-active .celebration-burst {
+  animation: confetti-fall 1400ms ease-out forwards;
+}
+
+.celebration-overlay.is-active .celebration-burst::before {
+  animation: confetti-fall 1600ms ease-out 120ms forwards;
+  transform: rotate(18deg);
+}
+
+.celebration-overlay.is-active .celebration-burst::after {
+  animation: confetti-fall 1800ms ease-out 180ms forwards;
+  transform: rotate(-18deg);
+}
+
+@keyframes celebration-pop {
+  0% {
+    transform: translateY(1rem) scale(0.94);
+    opacity: 0;
+  }
+
+  16% {
+    transform: translateY(0) scale(1.04);
+    opacity: 1;
+  }
+
+  28% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  82% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-0.5rem) scale(0.98);
+    opacity: 0;
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-1rem) scale(0.8);
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(1.2rem) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration-overlay.is-active .celebration-card,
+  .celebration-overlay.is-active .celebration-burst,
+  .celebration-overlay.is-active .celebration-burst::before,
+  .celebration-overlay.is-active .celebration-burst::after {
+    animation: none;
+  }
+
+  .celebration-overlay.is-active .celebration-card {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (min-width: 760px) {
   .app-shell {
     width: min(1280px, calc(100% - 2rem));
@@ -1727,6 +1970,12 @@ button {
   .avatar-builder-layout {
     grid-template-columns: minmax(16rem, 0.95fr) minmax(17rem, 1fr);
     align-items: start;
+  }
+
+  .calendar-modal-dialog {
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
   }
 }
 

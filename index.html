@@ -65,133 +65,6 @@
               <div class="daily-summary" id="dailySummary"></div>
               <div class="record-list" id="recordList"></div>
             </section>
-
-            <section class="panel form-panel">
-              <div class="section-head">
-                <div>
-                  <p class="section-kicker">Write Record</p>
-                  <h2 id="formTitle">새 연습 기록</h2>
-                </div>
-              </div>
-
-              <form id="recordForm" class="record-form">
-                <input id="recordId" name="recordId" type="hidden" />
-                <div class="form-error-message" id="formErrorMessage" hidden></div>
-
-                <!-- Compatibility fields kept for the legacy record shape. The visible goal UI now uses goalBlocks. -->
-                <input id="goal" name="goal" type="hidden" />
-                <input id="goalCompleted" name="goalCompleted" type="checkbox" hidden />
-                <input id="genre" name="genre" type="hidden" value="other" />
-
-                <section class="form-section">
-                  <div>
-                    <h3 class="form-section-title">오늘의 목표</h3>
-                    <p class="form-section-description">연습 전에 오늘 할 동작만 빠르게 정해두세요.</p>
-                  </div>
-
-                  <div class="compact-form-grid">
-                    <label class="field">
-                      <span>연습 날짜</span>
-                      <input id="practiceDate" name="practiceDate" type="date" required />
-                    </label>
-
-                    <label class="field">
-                      <span>연습 유형</span>
-                      <select id="practiceType" name="practiceType">
-                        <option value="solo">개인</option>
-                        <option value="team">팀</option>
-                      </select>
-                    </label>
-
-                    <label class="field">
-                      <span>연습 시간</span>
-                      <input id="durationMinutes" name="durationMinutes" type="number" min="0" step="10" required />
-                    </label>
-
-                    <label class="field">
-                      <span>장소</span>
-                      <input id="location" name="location" type="text" placeholder="예: 연습실, 집, 팀 스튜디오" />
-                    </label>
-                  </div>
-
-                  <div class="goal-builder">
-                    <div class="goal-builder-grid">
-                      <label class="field">
-                        <span>동작명</span>
-                        <input id="goalMoveName" name="goalMoveName" type="text" placeholder="예: 윈드밀, 프리즈, 탑락, 루틴 런스루" />
-                      </label>
-
-                      <label class="field">
-                        <span>목표 횟수</span>
-                        <input id="goalTargetCount" name="goalTargetCount" type="number" min="1" value="10" />
-                      </label>
-                    </div>
-
-                    <button class="ghost-button" id="addGoalBlockButton" type="button">목표 추가</button>
-
-                    <div>
-                      <p class="section-kicker">Saved Moves</p>
-                      <div class="saved-move-chips" id="savedMoveChips"></div>
-                    </div>
-
-                    <div class="goal-block-list" id="goalBlockList"></div>
-                  </div>
-                </section>
-
-                <div class="form-actions">
-                  <button class="ghost-button" id="resetFormButton" type="button">초기화</button>
-                  <button class="accent-button" id="planSubmitButton" type="submit">목표 저장</button>
-                </div>
-              </form>
-
-              <form id="reviewForm" class="record-form review-card" hidden>
-                <input id="reviewRecordId" name="reviewRecordId" type="hidden" />
-                <div class="form-error-message" id="reviewErrorMessage" hidden></div>
-
-                <section class="form-section">
-                  <div>
-                    <h3 class="form-section-title">연습 회고</h3>
-                    <p class="form-section-description">연습 후 목표한 동작을 실제로 했는지 체크하고 짧게 남겨보세요.</p>
-                  </div>
-
-                  <div class="review-checklist" id="reviewGoalChecklist"></div>
-
-                  <label class="field">
-                    <span>연습한 내용</span>
-                    <textarea id="reviewPracticeNotes" name="reviewPracticeNotes" rows="3" placeholder="체크만 해도 저장할 수 있어요. 필요하면 짧게 남겨보세요."></textarea>
-                  </label>
-
-                  <label class="field">
-                    <span>느낀 점</span>
-                    <textarea id="reviewReflection" name="reviewReflection" rows="2" placeholder="몸 상태, 집중도, 감각"></textarea>
-                  </label>
-
-                  <label class="field">
-                    <span>다음 연습 과제</span>
-                    <textarea id="reviewNextTask" name="reviewNextTask" rows="2" placeholder="다음에 이어갈 포인트"></textarea>
-                  </label>
-
-                  <div class="field-row">
-                    <label class="field">
-                      <span>컨디션 점수</span>
-                      <input id="reviewConditionScore" name="reviewConditionScore" type="range" min="1" max="5" value="3" />
-                      <strong class="range-value" id="reviewConditionValue">3</strong>
-                    </label>
-
-                    <label class="field">
-                      <span>만족도 점수</span>
-                      <input id="reviewSatisfactionScore" name="reviewSatisfactionScore" type="range" min="1" max="5" value="3" />
-                      <strong class="range-value" id="reviewSatisfactionValue">3</strong>
-                    </label>
-                  </div>
-                </section>
-
-                <div class="form-actions">
-                  <button class="ghost-button" id="cancelReviewButton" type="button">닫기</button>
-                  <button class="accent-button" id="reviewSubmitButton" type="submit">회고 저장</button>
-                </div>
-              </form>
-            </section>
           </aside>
         </div>
       </section>
@@ -210,6 +83,29 @@
     <button class="bottom-nav-button" type="button" data-tab="calendar" aria-controls="calendarPanel" aria-selected="false">캘린더</button>
     <button class="bottom-nav-button" type="button" data-tab="dashboard" aria-controls="dashboardPanel" aria-selected="false">대시보드</button>
   </nav>
+
+  <div id="calendarModal" class="calendar-modal" hidden>
+    <div class="calendar-modal-backdrop" data-action="close-calendar-modal"></div>
+    <div class="calendar-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="calendarModalTitle">
+      <div class="calendar-modal-header">
+        <div>
+          <p class="section-kicker" id="calendarModalKicker">Calendar Action</p>
+          <h2 id="calendarModalTitle">연습 기록</h2>
+        </div>
+        <button class="ghost-button modal-close-button" type="button" data-action="close-calendar-modal">닫기</button>
+      </div>
+      <div id="calendarModalBody" class="calendar-modal-body"></div>
+    </div>
+  </div>
+
+  <div id="celebrationOverlay" class="celebration-overlay" hidden aria-live="polite">
+    <div class="celebration-card">
+      <div class="celebration-burst" aria-hidden="true"></div>
+      <div class="celebration-icon" aria-hidden="true">🎉</div>
+      <strong>축하드려요.</strong>
+      <p>오늘도 한걸음 성장하셨네요!</p>
+    </div>
+  </div>
 
   <script defer src="main.js"></script>
 </body>
