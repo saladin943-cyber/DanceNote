@@ -18,55 +18,88 @@ const PRACTICE_TYPE_LABELS = {
   solo: "개인",
   team: "팀",
 };
-const CHARACTER_SHEET_IMAGE = "/DANCENOTE/characters/characters.png";
-const CHARACTER_CATALOG = {
-  basic_stand: {
-    label: "기본 서기",
-    image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "12.5% 25%",
-    fallbackClass: "avatar-fallback-rhyme",
+// 부위별 아바타 커스터마이징은 각 파츠 이미지가 동일한 512x768 캔버스와 동일한 기준점을 공유해야 정상 동작한다.
+// 배경은 통이미지를 사용할 수 있지만, 캐릭터는 base/hair/hat/top/bottom/shoes 투명 PNG 레이어로 분리되어야 한다.
+const AVATAR_PART_CATALOG = {
+  base: {
+    rhyme: {
+      label: "RHYME",
+      image: "/DANCENOTE/avatar/base/rhyme-base.png",
+    },
+    beatz: {
+      label: "BEATZ",
+      image: "/DANCENOTE/avatar/base/beatz-base.png",
+    },
   },
-  happy_wave: {
-    label: "해피 웨이브",
-    image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "37.5% 25%",
-    fallbackClass: "avatar-fallback-beatz",
+  hair: {
+    short_black: {
+      label: "검정 숏헤어",
+      image: "/DANCENOTE/avatar/hair/short-black.png",
+    },
+    ponytail_brown: {
+      label: "브라운 포니테일",
+      image: "/DANCENOTE/avatar/hair/ponytail-brown.png",
+    },
   },
-  jump_pose: {
-    label: "점프 포즈",
-    image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "62.5% 25%",
-    fallbackClass: "avatar-fallback-noti",
+  hat: {
+    none: {
+      label: "없음",
+      image: null,
+    },
+    black_cap: {
+      label: "블랙 캡",
+      image: "/DANCENOTE/avatar/hat/black-cap.png",
+    },
+    mint_cap: {
+      label: "민트 캡",
+      image: "/DANCENOTE/avatar/hat/mint-cap.png",
+    },
+    beanie: {
+      label: "비니",
+      image: "/DANCENOTE/avatar/hat/beanie.png",
+    },
   },
-  think_pose: {
-    label: "생각 포즈",
-    image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "87.5% 25%",
-    fallbackClass: "avatar-fallback-beatz",
+  top: {
+    hoodie_coral: {
+      label: "코랄 후디",
+      image: "/DANCENOTE/avatar/top/hoodie-coral.png",
+    },
+    jacket_mint: {
+      label: "민트 자켓",
+      image: "/DANCENOTE/avatar/top/jacket-mint.png",
+    },
+    tshirt_white: {
+      label: "화이트 티셔츠",
+      image: "/DANCENOTE/avatar/top/tshirt-white.png",
+    },
   },
-  shy_pose: {
-    label: "수줍은 포즈",
-    image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "12.5% 75%",
-    fallbackClass: "avatar-fallback-rhyme",
+  bottom: {
+    pants_black: {
+      label: "블랙 팬츠",
+      image: "/DANCENOTE/avatar/bottom/pants-black.png",
+    },
+    shorts_navy: {
+      label: "네이비 쇼츠",
+      image: "/DANCENOTE/avatar/bottom/shorts-navy.png",
+    },
+    wide_gray: {
+      label: "그레이 와이드팬츠",
+      image: "/DANCENOTE/avatar/bottom/wide-gray.png",
+    },
   },
-  point_pose: {
-    label: "포인트 포즈",
-    image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "37.5% 75%",
-    fallbackClass: "avatar-fallback-beatz",
-  },
-  sit_pose: {
-    label: "앉은 포즈",
-    image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "62.5% 75%",
-    fallbackClass: "avatar-fallback-noti",
-  },
-  dance_pose: {
-    label: "댄스 포즈",
-    image: CHARACTER_SHEET_IMAGE,
-    imagePosition: "87.5% 75%",
-    fallbackClass: "avatar-fallback-rhyme",
+  shoes: {
+    sneakers_red: {
+      label: "레드 스니커즈",
+      image: "/DANCENOTE/avatar/shoes/sneakers-red.png",
+    },
+    sneakers_mint: {
+      label: "민트 스니커즈",
+      image: "/DANCENOTE/avatar/shoes/sneakers-mint.png",
+    },
+    hightop_black: {
+      label: "블랙 하이탑",
+      image: "/DANCENOTE/avatar/shoes/hightop-black.png",
+    },
   },
 };
 const BACKGROUND_CATALOG = {
@@ -82,13 +115,6 @@ const BACKGROUND_CATALOG = {
     label: "Back 3",
     image: "/DANCENOTE/backgrounds/back3.png",
   },
-};
-const POSE_LABELS = {
-  idle: "기본",
-  groove: "그루브",
-  point: "포인트",
-  sit: "앉기",
-  wave: "손 인사",
 };
 const avatarBuilderState = {
   setup: null,
@@ -476,7 +502,9 @@ function renderHome() {
             <span>팀</span>
             <strong>${team ? escapeHtml(team.teamName) : "없음"}</strong>
             <span>캐릭터</span>
-            <strong>${getCharacterLabel(avatar.baseCharacterId)}</strong>
+            <strong>${getAvatarPartLabel("base", avatar.baseId)}</strong>
+            <span>상의</span>
+            <strong>${getAvatarPartLabel("top", avatar.topId)}</strong>
             <span>배경</span>
             <strong>${BACKGROUND_CATALOG[avatar.backgroundId]?.label || avatar.backgroundId}</strong>
             <span>최근 업데이트</span>
@@ -520,7 +548,7 @@ function renderHome() {
 }
 
 function renderProfileSetup() {
-  avatarBuilderState.setup = getDefaultAvatarPreset();
+  avatarBuilderState.setup = getDefaultLayeredAvatar();
   elements.homeContent.innerHTML = `
     <section class="panel profile-setup">
       <div class="setup-copy">
@@ -596,7 +624,9 @@ function renderPersonalRoom() {
         onerror="this.closest('.room-image-stage').classList.add('uses-background-fallback')"
       />
       <div class="room-stage-shade"></div>
-      ${renderAvatar(profile, { label: profile.dancerName })}
+      <div class="room-avatar-layer-wrap">
+        ${renderLayeredAvatar(profile, { label: profile.dancerName })}
+      </div>
     </div>
   `;
 }
@@ -609,11 +639,13 @@ function renderTeamRoom(team) {
       dancerName: "Beat",
       mainGenre: team.genre,
       avatar: {
-        baseCharacterId: "point_pose",
-        poseId: "idle",
-        lookId: "default",
+        baseId: "beatz",
+        hairId: "short_black",
+        hatId: "mint_cap",
+        topId: "jacket_mint",
+        bottomId: "pants_black",
+        shoesId: "sneakers_mint",
         backgroundId: state.profile.avatar.backgroundId,
-        accessoryId: null,
       },
     },
     {
@@ -621,11 +653,13 @@ function renderTeamRoom(team) {
       dancerName: "Line",
       mainGenre: team.genre,
       avatar: {
-        baseCharacterId: "happy_wave",
-        poseId: "idle",
-        lookId: "default",
+        baseId: "rhyme",
+        hairId: "ponytail_brown",
+        hatId: "black_cap",
+        topId: "hoodie_coral",
+        bottomId: "shorts_navy",
+        shoesId: "sneakers_red",
         backgroundId: state.profile.avatar.backgroundId,
-        accessoryId: null,
       },
     },
   ];
@@ -667,22 +701,30 @@ function renderTeamRoom(team) {
 }
 
 function renderAvatar(profile, options = {}) {
+  return renderLayeredAvatar(profile, options);
+}
+
+function renderLayeredAvatar(profile, options = {}) {
   const normalizedProfile = normalizeProfileAvatar(profile);
   const sizeClass = options.size === "small" ? "is-small" : "";
   const mockClass = options.isMock ? "is-mock" : "";
+  const labelClass = options.hideLabel ? " has-hidden-label" : "";
   const label = options.label || normalizedProfile.dancerName;
+  const avatar = normalizedProfile.avatar;
+  const layers = [
+    renderAvatarLayer("base", getAvatarPartAsset("base", avatar.baseId), true),
+    renderAvatarLayer("hair", getAvatarPartAsset("hair", avatar.hairId)),
+    renderAvatarLayer("bottom", getAvatarPartAsset("bottom", avatar.bottomId)),
+    renderAvatarLayer("top", getAvatarPartAsset("top", avatar.topId)),
+    renderAvatarLayer("shoes", getAvatarPartAsset("shoes", avatar.shoesId)),
+    renderAvatarLayer("hat", getAvatarPartAsset("hat", avatar.hatId)),
+  ].join("");
 
   return `
-    <div class="dancer-avatar-image ${sizeClass} ${mockClass}">
-      <img
-        class="preview-character"
-        src="${normalizedProfile.avatarPreview.characterImage}"
-        alt="${escapeHtml(label)} 캐릭터"
-        style="object-position: ${getCharacterImagePosition(normalizedProfile.avatar)}"
-        onerror="this.closest('.dancer-avatar-image').classList.add('uses-css-fallback')"
-      />
+    <div class="layered-avatar ${sizeClass} ${mockClass}${labelClass}">
+      ${layers}
       ${renderCssAvatarFallback(normalizedProfile.avatar)}
-      <div class="avatar-label">${escapeHtml(label)}</div>
+      ${options.hideLabel ? "" : `<div class="avatar-label">${escapeHtml(label)}</div>`}
     </div>
   `;
 }
@@ -756,7 +798,12 @@ function renderAvatarBuilder(scope, avatar) {
       <div class="avatar-builder-layout">
         ${renderAvatarPreviewStage(scope, normalizedAvatar)}
         <div class="selector-list">
-          ${renderArrowSelector({ scope, key: "baseCharacterId", label: "캐릭터 타입", valueLabel: getCharacterLabel(normalizedAvatar.baseCharacterId) })}
+          ${renderArrowSelector({ scope, key: "baseId", label: "캐릭터", valueLabel: getAvatarPartLabel("base", normalizedAvatar.baseId) })}
+          ${renderArrowSelector({ scope, key: "hairId", label: "헤어", valueLabel: getAvatarPartLabel("hair", normalizedAvatar.hairId) })}
+          ${renderArrowSelector({ scope, key: "hatId", label: "모자", valueLabel: getAvatarPartLabel("hat", normalizedAvatar.hatId) })}
+          ${renderArrowSelector({ scope, key: "topId", label: "상의", valueLabel: getAvatarPartLabel("top", normalizedAvatar.topId) })}
+          ${renderArrowSelector({ scope, key: "bottomId", label: "하의", valueLabel: getAvatarPartLabel("bottom", normalizedAvatar.bottomId) })}
+          ${renderArrowSelector({ scope, key: "shoesId", label: "신발", valueLabel: getAvatarPartLabel("shoes", normalizedAvatar.shoesId) })}
           ${renderArrowSelector({ scope, key: "backgroundId", label: "배경", valueLabel: BACKGROUND_CATALOG[normalizedAvatar.backgroundId]?.label || normalizedAvatar.backgroundId })}
         </div>
       </div>
@@ -765,7 +812,6 @@ function renderAvatarBuilder(scope, avatar) {
 }
 
 function renderAvatarPreviewStage(scope, avatar) {
-  const characterImage = getCharacterImagePath(avatar);
   const backgroundImage = getBackgroundImagePath(avatar.backgroundId);
   return `
     <div class="avatar-preview-wrap">
@@ -778,15 +824,9 @@ function renderAvatarPreviewStage(scope, avatar) {
           onerror="this.closest('.avatar-preview-stage').classList.add('uses-background-fallback')"
         />
         <div class="room-stage-shade"></div>
-        <img
-          class="preview-character"
-          data-preview-character="${scope}"
-          src="${characterImage}"
-          alt="캐릭터 미리보기"
-          style="object-position: ${getCharacterImagePosition(avatar)}"
-          onerror="this.closest('.avatar-preview-stage').classList.add('uses-character-fallback')"
-        />
-        ${renderCssAvatarFallback(avatar)}
+        <div class="preview-avatar-layer-wrap" data-preview-avatar="${scope}">
+          ${renderLayeredAvatar({ avatar, dancerName: "Preview" }, { hideLabel: true })}
+        </div>
       </div>
       <div class="preview-caption" id="${scope}PreviewCaption">${getPreviewCaption(avatar)}</div>
     </div>
@@ -976,16 +1016,6 @@ function renderGenreOptions(selectedValue = "breaking") {
     .join("");
 }
 
-function getDefaultAvatarPreset() {
-  return normalizeAvatarState({
-    baseCharacterId: "basic_stand",
-    poseId: "idle",
-    lookId: "default",
-    backgroundId: "back1",
-    accessoryId: null,
-  });
-}
-
 function migrateProfileToImageAvatar(profile) {
   if (!profile) {
     return profile;
@@ -994,47 +1024,74 @@ function migrateProfileToImageAvatar(profile) {
 }
 
 function normalizeProfileAvatar(profile) {
-  const avatar = normalizeAvatarState(profile.avatar || getDefaultAvatarPreset());
+  const avatar = normalizeLayeredAvatarState(profile.avatar || getDefaultLayeredAvatar());
   return {
     ...profile,
     avatar,
     avatarPreview: {
-      characterImage: getCharacterImagePath(avatar),
       backgroundImage: getBackgroundImagePath(avatar.backgroundId),
     },
   };
 }
 
+function getDefaultLayeredAvatar() {
+  return {
+    baseId: "rhyme",
+    hairId: "short_black",
+    hatId: "none",
+    topId: "hoodie_coral",
+    bottomId: "pants_black",
+    shoesId: "sneakers_red",
+    backgroundId: "back1",
+  };
+}
+
 function normalizeAvatarState(avatar = {}) {
-  const legacyCharacterMap = {
-    rhyme: "basic_stand",
-    beatz: "point_pose",
-    noti: "happy_wave",
-  };
-  const requestedCharacterId = legacyCharacterMap[avatar.baseCharacterId] || avatar.baseCharacterId;
-  const baseCharacterId = CHARACTER_CATALOG[requestedCharacterId] ? requestedCharacterId : "basic_stand";
-  const legacyPoseMap = {
-    idle: "idle",
-    groove: "groove",
-    freeze: "point",
-    wave: "wave",
-    team: "groove",
-  };
-  const requestedPose = avatar.poseId || legacyPoseMap[avatar.pose] || avatar.pose;
-  const poseId = POSE_LABELS[requestedPose] ? requestedPose : "idle";
+  return normalizeLayeredAvatarState(avatar);
+}
+
+function normalizeLayeredAvatarState(avatar = {}) {
+  const migratedAvatar = migrateLegacyAvatarToLayered(avatar);
+  const defaults = getDefaultLayeredAvatar();
+  const baseId = AVATAR_PART_CATALOG.base[migratedAvatar.baseId] ? migratedAvatar.baseId : defaults.baseId;
+  const hairId = AVATAR_PART_CATALOG.hair[migratedAvatar.hairId] ? migratedAvatar.hairId : defaults.hairId;
+  const hatId = AVATAR_PART_CATALOG.hat[migratedAvatar.hatId] ? migratedAvatar.hatId : defaults.hatId;
+  const topId = AVATAR_PART_CATALOG.top[migratedAvatar.topId] ? migratedAvatar.topId : defaults.topId;
+  const bottomId = AVATAR_PART_CATALOG.bottom[migratedAvatar.bottomId] ? migratedAvatar.bottomId : defaults.bottomId;
+  const shoesId = AVATAR_PART_CATALOG.shoes[migratedAvatar.shoesId] ? migratedAvatar.shoesId : defaults.shoesId;
   const backgroundId = BACKGROUND_CATALOG[avatar.backgroundId] ? avatar.backgroundId : "back1";
 
   return {
-    baseCharacterId,
-    poseId,
-    lookId: avatar.lookId || "default",
+    baseId,
+    hairId,
+    hatId,
+    topId,
+    bottomId,
+    shoesId,
     backgroundId,
-    accessoryId: avatar.accessoryId || null,
+  };
+}
+
+function migrateLegacyAvatarToLayered(avatar = {}) {
+  if (avatar.baseId || avatar.hairId || avatar.topId || avatar.bottomId || avatar.shoesId) {
+    return avatar;
+  }
+
+  const isBeatz = avatar.baseCharacterId === "beatz" || avatar.baseCharacterId === "point_pose";
+  const isRhyme = avatar.baseCharacterId === "rhyme" || avatar.baseCharacterId === "basic_stand" || avatar.baseCharacterId === "happy_wave";
+  return {
+    baseId: isBeatz ? "beatz" : "rhyme",
+    hairId: isRhyme ? "ponytail_brown" : "short_black",
+    hatId: avatar.hat === "cap" ? "black_cap" : "none",
+    topId: isBeatz ? "jacket_mint" : "hoodie_coral",
+    bottomId: avatar.bottom === "shorts" || isRhyme ? "shorts_navy" : "pants_black",
+    shoesId: isBeatz ? "sneakers_mint" : "sneakers_red",
+    backgroundId: BACKGROUND_CATALOG[avatar.backgroundId] ? avatar.backgroundId : "back1",
   };
 }
 
 function getCurrentAvatarBuilderState(scope) {
-  avatarBuilderState[scope] = normalizeAvatarState(avatarBuilderState[scope] || getDefaultAvatarPreset());
+  avatarBuilderState[scope] = normalizeLayeredAvatarState(avatarBuilderState[scope] || getDefaultLayeredAvatar());
   return avatarBuilderState[scope];
 }
 
@@ -1042,55 +1099,44 @@ function cycleAvatarOption(key, direction, scope) {
   const current = getCurrentAvatarBuilderState(scope);
   let nextAvatar = { ...current };
   const options = getAvatarOptionValues(key, current);
-  const currentValue = key === "accessoryId" ? current.accessoryId || "none" : current[key];
+  const currentValue = current[key];
   const currentIndex = Math.max(options.indexOf(currentValue), 0);
   const nextIndex = (currentIndex + direction + options.length) % options.length;
   const nextValue = options[nextIndex];
 
-  if (key === "baseCharacterId") {
-    nextAvatar = {
-      ...nextAvatar,
-      baseCharacterId: nextValue,
-      lookId: "default",
-      poseId: "idle",
-    };
-  } else if (key === "accessoryId") {
-    nextAvatar.accessoryId = nextValue === "none" ? null : nextValue;
-  } else {
-    nextAvatar[key] = nextValue;
-  }
+  nextAvatar[key] = nextValue;
 
-  avatarBuilderState[scope] = normalizeAvatarState(nextAvatar);
+  avatarBuilderState[scope] = normalizeLayeredAvatarState(nextAvatar);
   renderCharacterBuilderPreview(scope);
   syncAvatarBuilderLabels(scope);
 }
 
 function getAvatarOptionValues(key, avatar) {
-  if (key === "baseCharacterId") {
-    return Object.keys(CHARACTER_CATALOG);
-  }
-  if (key === "poseId") {
-    return ["idle"];
+  const partKeyBySelector = {
+    baseId: "base",
+    hairId: "hair",
+    hatId: "hat",
+    topId: "top",
+    bottomId: "bottom",
+    shoesId: "shoes",
+  };
+  if (partKeyBySelector[key]) {
+    return Object.keys(AVATAR_PART_CATALOG[partKeyBySelector[key]]);
   }
   if (key === "backgroundId") {
     return Object.keys(BACKGROUND_CATALOG);
-  }
-  if (key === "accessoryId") {
-    return ["none"];
   }
   return [];
 }
 
 function renderCharacterBuilderPreview(scope) {
   const avatar = getCurrentAvatarBuilderState(scope);
-  const characterImage = document.querySelector(`[data-preview-character="${scope}"]`);
+  const avatarPreview = document.querySelector(`[data-preview-avatar="${scope}"]`);
   const backgroundImage = document.querySelector(`[data-preview-background="${scope}"]`);
   const caption = document.getElementById(`${scope}PreviewCaption`);
 
-  if (characterImage) {
-    characterImage.src = getCharacterImagePath(avatar);
-    characterImage.style.objectPosition = getCharacterImagePosition(avatar);
-    characterImage.closest(".avatar-preview-stage")?.classList.remove("uses-character-fallback");
+  if (avatarPreview) {
+    avatarPreview.innerHTML = renderLayeredAvatar({ avatar, dancerName: "Preview" }, { hideLabel: true });
   }
   if (backgroundImage) {
     backgroundImage.src = getBackgroundImagePath(avatar.backgroundId);
@@ -1104,7 +1150,12 @@ function renderCharacterBuilderPreview(scope) {
 function syncAvatarBuilderLabels(scope) {
   const avatar = getCurrentAvatarBuilderState(scope);
   const labels = {
-    baseCharacterId: getCharacterLabel(avatar.baseCharacterId),
+    baseId: getAvatarPartLabel("base", avatar.baseId),
+    hairId: getAvatarPartLabel("hair", avatar.hairId),
+    hatId: getAvatarPartLabel("hat", avatar.hatId),
+    topId: getAvatarPartLabel("top", avatar.topId),
+    bottomId: getAvatarPartLabel("bottom", avatar.bottomId),
+    shoesId: getAvatarPartLabel("shoes", avatar.shoesId),
     backgroundId: BACKGROUND_CATALOG[avatar.backgroundId]?.label || avatar.backgroundId,
   };
 
@@ -1116,32 +1167,36 @@ function syncAvatarBuilderLabels(scope) {
   });
 }
 
-function getCharacterImagePath(avatar) {
-  const normalizedAvatar = normalizeAvatarState(avatar);
-  return CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].image;
-}
-
-function getCharacterImagePosition(avatar) {
-  const normalizedAvatar = normalizeAvatarState(avatar);
-  return CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].imagePosition;
-}
-
 function getBackgroundImagePath(backgroundId) {
   return BACKGROUND_CATALOG[backgroundId]?.image || BACKGROUND_CATALOG.back1.image;
 }
 
-function getCharacterLabel(baseCharacterId) {
-  return CHARACTER_CATALOG[baseCharacterId]?.label || baseCharacterId;
+function getAvatarPartAsset(partType, partId) {
+  return AVATAR_PART_CATALOG[partType]?.[partId] || null;
+}
+
+function getAvatarPartLabel(partType, partId) {
+  return getAvatarPartAsset(partType, partId)?.label || partId;
+}
+
+function renderAvatarLayer(partType, asset, isBase = false) {
+  if (!asset?.image) {
+    return "";
+  }
+  const fallbackHandler = isBase
+    ? "this.style.display='none'; this.closest('.layered-avatar').classList.add('uses-css-fallback')"
+    : "this.style.display='none'";
+  return `<img class="avatar-layer avatar-layer-${partType}" src="${asset.image}" alt="" onerror="${fallbackHandler}" />`;
 }
 
 function getPreviewCaption(avatar) {
-  const normalizedAvatar = normalizeAvatarState(avatar);
-  return `${getCharacterLabel(normalizedAvatar.baseCharacterId)} · ${BACKGROUND_CATALOG[normalizedAvatar.backgroundId]?.label || normalizedAvatar.backgroundId}`;
+  const normalizedAvatar = normalizeLayeredAvatarState(avatar);
+  return `${getAvatarPartLabel("base", normalizedAvatar.baseId)} · ${getAvatarPartLabel("top", normalizedAvatar.topId)} · ${BACKGROUND_CATALOG[normalizedAvatar.backgroundId]?.label || normalizedAvatar.backgroundId}`;
 }
 
 function getCharacterFallbackClass(avatar) {
-  const normalizedAvatar = normalizeAvatarState(avatar);
-  return CHARACTER_CATALOG[normalizedAvatar.baseCharacterId].fallbackClass;
+  const normalizedAvatar = normalizeLayeredAvatarState(avatar);
+  return normalizedAvatar.baseId === "beatz" ? "avatar-fallback-beatz" : "avatar-fallback-rhyme";
 }
 
 function renderCssAvatarFallback(avatar) {
